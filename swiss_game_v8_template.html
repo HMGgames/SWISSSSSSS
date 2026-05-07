@@ -1,0 +1,3114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Protect Switzerland — Border Defense</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #0a0a12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Courier New', monospace;
+}
+#gameWrap {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+}
+#gameCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  touch-action: none;
+}
+
+/* ── Mobile buttons: absolute inside #gameWrap ── */
+#mobileControls {
+  display: none;
+  position: absolute;
+  /* Sit fully inside canvas — buttons 80px tall + 10px from bottom = 90px up */
+  bottom: 10px;
+  left: 0; right: 0;
+  height: 80px;
+  pointer-events: none;
+  z-index: 100;
+}
+#mobileControls.show { display: block; }
+.mob-btn {
+  position: absolute;
+  bottom: 0;
+  width: 80px; height: 80px;
+  background: rgba(0,0,0,0.55);
+  border: 3px solid rgba(255,255,255,0.55);
+  border-radius: 50%;
+  color: #fff; font-size: 2.2rem;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  pointer-events: all;
+  cursor: pointer;
+}
+#mobLeft  { left:  12px; }
+#mobRight { right: 12px; }
+.mob-btn:active, .mob-btn.pressed {
+  background: rgba(213,43,30,0.85);
+  border-color: #fff;
+  transform: scale(0.90);
+}
+/* ── Mobile tweaks ── */
+@media (max-width: 600px) {
+  #hud { font-size: .62rem; padding: 4px 8px; gap: 6px; }
+  #popWrap { padding: 3px 8px; }
+  #dpad { padding: 8px 0 6px; }
+  #hint { display: none; }
+}
+
+/* Portrait phones: rotate hint */
+@media (max-width: 600px) and (orientation: portrait) {
+  #rotateHint {
+    display: flex !important;
+  }
+}
+
+/* HUD */
+#hud {
+  display:none; width:100%; max-width:960px;
+  background:rgba(0,0,0,0.9); padding:6px 16px;
+  gap:10px; align-items:center; justify-content:space-between;
+  border-bottom:3px solid #D52B1E; flex-wrap:wrap;
+}
+#hud.on { display:flex; }
+.hi { font-size:.72rem; letter-spacing:.08em; color:#888; text-transform:uppercase; }
+.hi span { color:#fff; font-weight:bold; }
+.hi span.pop { animation: scorePop 0.3s ease; }
+#comboDisplay {
+  font-size:.82rem; font-weight:900; letter-spacing:.06em;
+  color:#facc15; text-shadow:0 0 8px rgba(250,204,21,0.8);
+  display:none; white-space:nowrap;
+}
+#comboDisplay.active { display:block; }
+@keyframes comboPop {
+  0%   { transform:scale(1.4); color:#fff; }
+  100% { transform:scale(1);   color:#facc15; }
+}
+#comboDisplay.bump { animation: comboPop 0.2s ease; }
+@keyframes scorePop {
+  0%   { transform:scale(1);    color:#f97316; }
+  50%  { transform:scale(1.35); color:#f97316; }
+  100% { transform:scale(1);    color:#fff; }
+}
+.hearts { font-size:1.1rem; letter-spacing:4px; }
+
+/* ── Swiss Population Bar ── */
+#popWrap {
+  display:none; width:100%; max-width:960px;
+  background:linear-gradient(180deg, #0d0d0d 0%, #111 100%);
+  padding:6px 14px;
+  align-items:center; gap:10px;
+  border-bottom:none;
+  position:relative;
+  box-shadow: 0 2px 12px rgba(213,43,30,0.25);
+}
+/* Swiss cross accent lines */
+#popWrap::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, #D52B1E 0%, #ff4444 30%, #D52B1E 50%, #ff4444 70%, #D52B1E 100%);
+}
+#popWrap::after {
+  content:'';
+  position:absolute; bottom:0; left:0; right:0; height:1px;
+  background: rgba(213,43,30,0.3);
+}
+#popWrap.on { display:flex; }
+
+/* Swiss cross icon */
+#popLabel {
+  display:flex; align-items:center; gap:6px;
+  font-size:.7rem; color:#ccc; white-space:nowrap;
+  text-transform:uppercase; letter-spacing:.1em; font-weight:bold;
+  flex-shrink:0;
+}
+#popLabel .swiss-cross {
+  width:18px; height:18px; position:relative; flex-shrink:0;
+  background:#D52B1E; border-radius:2px;
+  display:flex; align-items:center; justify-content:center;
+}
+#popLabel .swiss-cross::before {
+  content:''; position:absolute;
+  background:#fff;
+  width:10px; height:4px; border-radius:1px;
+}
+#popLabel .swiss-cross::after {
+  content:''; position:absolute;
+  background:#fff;
+  width:4px; height:10px; border-radius:1px;
+}
+
+/* Progress track */
+#popTrack {
+  flex:1; height:16px;
+  background:#1a1a1a;
+  border-radius:8px; overflow:hidden;
+  border:1px solid #333;
+  position:relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+/* Tick marks at 25/50/75% */
+#popTrack::before {
+  content:'';
+  position:absolute; inset:0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent calc(25% - 1px),
+    rgba(255,255,255,0.08) calc(25% - 1px),
+    rgba(255,255,255,0.08) 25%
+  );
+  z-index:1; pointer-events:none;
+}
+#popFill {
+  height:100%;
+  background:linear-gradient(90deg, #16a34a 0%, #84cc16 25%, #eab308 50%, #f97316 75%, #D52B1E 100%);
+  border-radius:8px;
+  width:0%;
+  transition:width .35s cubic-bezier(.4,0,.2,1);
+  position:relative;
+  box-shadow: 0 0 8px rgba(213,43,30,0.3);
+}
+/* Shimmer effect on fill */
+#popFill::after {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:40%;
+  background:rgba(255,255,255,0.15);
+  border-radius:8px 8px 0 0;
+}
+
+/* Number display */
+#popNum {
+  font-size:.82rem; color:#fff; white-space:nowrap;
+  font-weight:bold; font-family:'Courier New',monospace;
+  text-align:right; flex-shrink:0;
+  min-width:130px;
+  letter-spacing:.02em;
+}
+/* Pulse animation when danger */
+@keyframes popDanger {
+  0%,100% { text-shadow: 0 0 6px rgba(213,43,30,0.5); }
+  50%      { text-shadow: 0 0 16px rgba(213,43,30,1); }
+}
+#popNum.danger { animation: popDanger 0.8s infinite; }
+
+/* D-pad */
+#dpad {
+  display:none;
+  grid-template-columns:52px 52px 52px;
+  grid-template-rows:52px 52px 52px;
+  gap:5px; padding:14px 0 8px;
+}
+#dpad.on { display:grid; }
+/* D-pad hidden — swipe controls used on touch devices */
+/* D-pad always hidden — using button overlay instead */
+#dpad { display: none !important; }
+#hint { display: none; }
+.dp {
+  background:#1a1a26; border:2px solid #333; border-radius:10px;
+  color:#fff; font-size:1.4rem;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+  transition:background .08s, transform .08s;
+}
+.dp:active { background:#D52B1E; border-color:#D52B1E; transform:scale(0.93); }
+.dp-up  { grid-column:2; grid-row:1; }
+.dp-lt  { grid-column:1; grid-row:2; }
+.dp-mid { grid-column:2; grid-row:2; background:#111; font-size:.9rem; }
+.dp-rt  { grid-column:3; grid-row:2; }
+.dp-dn  { grid-column:2; grid-row:3; }
+#hint { font-size:.65rem; color:#333; padding:4px 0 12px; letter-spacing:.06em; }
+
+/* Wave flash */
+#waveFlash {
+  display:none; position:absolute; top:35%; left:50%;
+  transform:translate(-50%,-50%);
+  font-size:2.6rem; font-weight:900; letter-spacing:.2em;
+  color:#fff; text-shadow:0 0 40px rgba(213,43,30,.95),3px 3px 0 #000;
+  pointer-events:none; z-index:40; white-space:nowrap;
+}
+@keyframes waveIn {
+  0%   { opacity:0; transform:translate(-50%,-50%) scale(1.7); }
+  18%  { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  72%  { opacity:1; }
+  100% { opacity:0; transform:translate(-50%,-50%) scale(0.85); }
+}
+/* ── End screen form overlay ────────────────────────── */
+#endOverlay {
+  display:none; position:fixed; inset:0; z-index:300;
+  background:rgba(0,0,0,0.88);
+  align-items:center; justify-content:center;
+  font-family:'Courier New',monospace;
+}
+#endOverlay.show { display:flex; }
+
+/* Form panel */
+#formPanel {
+  background:#0f0f1a; border:2px solid #D52B1E;
+  border-radius:14px; padding:28px 32px;
+  width:min(520px, 95vw); max-height:90vh; overflow-y:auto;
+  box-shadow:0 8px 60px rgba(213,43,30,0.35);
+  animation:panelIn .25s ease;
+}
+@keyframes panelIn { from{transform:scale(0.92);opacity:0} to{transform:scale(1);opacity:1} }
+
+#formPanel h2 {
+  color:#fff; font-size:1.1rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; text-align:center;
+}
+#formPanel .subtitle {
+  color:rgba(255,255,255,0.45); font-size:.72rem; text-align:center;
+  letter-spacing:.06em; margin-bottom:22px;
+}
+.form-row { display:flex; gap:12px; margin-bottom:12px; }
+.form-col { flex:1; display:flex; flex-direction:column; gap:4px; }
+.form-col label {
+  font-size:.62rem; color:rgba(255,255,255,0.5);
+  text-transform:uppercase; letter-spacing:.08em;
+}
+.form-col input, .form-col select {
+  background:#1a1a2e; border:1.5px solid #333; border-radius:6px;
+  color:#fff; font-family:'Courier New',monospace; font-size:.82rem;
+  padding:8px 10px; outline:none; transition:border-color .15s;
+}
+.form-col input:focus, .form-col select:focus { border-color:#D52B1E; }
+.form-col select option { background:#1a1a2e; }
+
+#formSubmitBtn {
+  width:100%; padding:13px; margin-top:16px;
+  background:#D52B1E; color:#fff; border:none; border-radius:8px;
+  font:bold .88rem 'Courier New',monospace; letter-spacing:.1em;
+  text-transform:uppercase; cursor:pointer;
+  transition:background .15s, transform .1s;
+}
+#formSubmitBtn:hover { background:#b91c1c; }
+#formSubmitBtn:active { transform:scale(0.97); }
+.form-error { color:#ef4444; font-size:.7rem; margin-top:8px; text-align:center; display:none; }
+
+/* Scoreboard panel — side-by-side */
+#scorePanel {
+  display:none; flex-direction:row; gap:0;
+  background:#0f0f1a; border:2px solid #D52B1E;
+  border-radius:14px; overflow:hidden;
+  width:min(900px, 96vw); max-height:92vh;
+  box-shadow:0 8px 60px rgba(213,43,30,0.35);
+  animation:panelIn .25s ease;
+}
+/* Left column: logo + CTA */
+#scoreLogo {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:#0a0a12; border-right:2px solid #D52B1E;
+  padding:24px 20px; width:380px; flex-shrink:0; gap:14px;
+}
+#scoreLogoImg {
+  width:100%; height:auto; object-fit:contain;
+  border-radius:12px; background:transparent;
+  display:block;
+}
+#scoreCTATitle {
+  color:#fff; font-size:.78rem; font-weight:bold;
+  text-align:center; letter-spacing:.04em; line-height:1.4;
+}
+#scoreCTABody {
+  color:rgba(255,255,255,0.5); font-size:.65rem;
+  text-align:center; line-height:1.6;
+}
+/* Right column: leaderboard */
+#scoreRight {
+  flex:1; padding:24px 28px; overflow-y:auto;
+  display:flex; flex-direction:column;
+}
+#scoreRight h2 {
+  color:#fff; font-size:1.1rem; letter-spacing:.12em;
+  text-transform:uppercase; margin-bottom:4px; text-align:center;
+}
+#scoreRight .subtitle {
+  color:rgba(255,255,255,0.45); font-size:.72rem; text-align:center;
+  letter-spacing:.06em; margin-bottom:18px;
+}
+.score-table { width:100%; border-collapse:collapse; }
+.score-table th {
+  font-size:.62rem; color:rgba(255,255,255,0.4); letter-spacing:.08em;
+  text-transform:uppercase; padding:6px 10px; text-align:left;
+  border-bottom:1px solid #222;
+}
+.score-table td { padding:9px 10px; font-size:.82rem; color:#fff; }
+.score-table tr:nth-child(even) td { background:rgba(255,255,255,0.03); }
+.score-table tr.highlight td { color:#fbbf24; font-weight:bold; }
+.score-table .rank { color:rgba(255,255,255,0.35); width:36px; }
+.score-table .medal { width:28px; text-align:center; }
+.score-panel-btns { display:flex; gap:10px; margin-top:auto; padding-top:16px; flex-direction:column; }
+.sp-btn {
+  width:100%; padding:11px; border:none; border-radius:8px;
+  font:bold .78rem 'Courier New',monospace; letter-spacing:.08em;
+  text-transform:uppercase; cursor:pointer; transition:transform .1s;
+}
+.sp-btn:active { transform:scale(0.97); }
+.sp-btn-green  { background:#16a34a; color:#fff; }
+.sp-btn-red    { background:#D52B1E; color:#fff; }
+.sp-btn-share  { background:#1d4ed8; color:#fff; }
+/* Player stats bar on scoreboard */
+#myStatsBar { display:flex; }
+.my-stat {
+  flex:1; background:#111; padding:10px 6px;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  border-right:1px solid #222;
+}
+.my-stat:last-child { border-right:none; }
+.my-stat-val { color:#fff; font-size:1.1rem; font-weight:bold; }
+.my-stat-label { color:rgba(255,255,255,0.4); font-size:.58rem; text-transform:uppercase; letter-spacing:.08em; }
+
+</style>
+</head>
+<body>
+
+<div id="popWrap">
+  <span id="popLabel"><span class="swiss-cross"></span>BEVÖLKERUNG</span>
+  <div id="popTrack"><div id="popFill"></div></div>
+  <span id="popNum">8,776,000 <span style="color:#555">/ 10,000,000</span></span>
+</div>
+<div id="hud">
+  <div class="hi">Score: <span id="sScore">0</span></div>
+  <div class="hi">Intercepted: <span id="sInt">0</span></div>
+  <div class="hi">Level: <span id="sWave">1</span></div>
+  <div class="hearts" id="sHearts">♥ ♥ ♥</div>
+  <div id="comboDisplay">🔥 ×<span id="comboVal">1</span></div>
+</div>
+
+<!-- Rotate hint for portrait mobile -->
+<div id="rotateHint" style="
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:#0a0a12; flex-direction:column;
+  align-items:center; justify-content:center; gap:16px;
+">
+  <div style="font-size:3rem;">📱↔️</div>
+  <div style="color:#fff; font:bold 1rem 'Courier New',monospace; text-align:center; padding:0 24px;">
+    Please rotate your device to landscape for the best experience
+  </div>
+  <div style="color:#555; font:.75rem 'Courier New',monospace;">Bitte Gerät drehen · Veuillez pivoter · Ruota il dispositivo</div>
+</div>
+
+<div id="gameWrap">
+  <canvas id="gameCanvas" width="960" height="540"></canvas>
+  <div id="waveFlash"></div>
+  <div id="mobileControls">
+    <button class="mob-btn" id="mobLeft"  aria-label="Move left">◀</button>
+    <button class="mob-btn" id="mobRight" aria-label="Move right">▶</button>
+  </div>
+</div>
+
+<!-- End screen overlay: form + scoreboard -->
+<div id="endOverlay">
+
+  <!-- Step 1: Lead gen form — full width -->
+  <div id="formPanel">
+    <h2 id="formTitle">🇨🇭 Border Overwhelmed</h2>
+    <div class="subtitle" id="formSubtitle">Enter your details to save your score to the leaderboard</div>
+
+    <div class="form-row">
+      <div class="form-col">
+        <label id="lbl-gender">Gender</label>
+        <select id="f-gender">
+          <option value="">—</option>
+          <option value="M" id="opt-man">Man</option>
+          <option value="W" id="opt-woman">Woman</option>
+        </select>
+      </div>
+      <div class="form-col">
+        <label id="lbl-profession">Profession</label>
+        <input id="f-profession" type="text" autocomplete="organization-title">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label id="lbl-firstname">First Name *</label>
+        <input id="f-firstname" type="text" autocomplete="given-name">
+      </div>
+      <div class="form-col">
+        <label id="lbl-lastname">Last Name *</label>
+        <input id="f-lastname" type="text" autocomplete="family-name">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label id="lbl-postal">Postal Code</label>
+        <input id="f-postal" type="text" inputmode="numeric" autocomplete="postal-code">
+      </div>
+      <div class="form-col">
+        <label id="lbl-phone">Phone Number</label>
+        <input id="f-phone" type="tel" autocomplete="tel">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label id="lbl-email">Email Address *</label>
+        <input id="f-email" type="email" autocomplete="email">
+      </div>
+    </div>
+    <div class="form-error" id="formError">Please fill in all required fields (*)</div>
+    <button id="formSubmitBtn">Submit &amp; View Leaderboard</button>
+  </div>
+
+  <!-- Step 2: Side-by-side — logo/CTA left, scoreboard right -->
+  <div id="scorePanel">
+    <!-- Left: logo + CTA -->
+    <div id="scoreLogo">
+      <img id="scoreLogoImg" src="" alt="">
+      <div id="scoreCTATitle"></div>
+      <div id="scoreCTABody"></div>
+      <div class="score-panel-btns">
+        <button class="sp-btn sp-btn-green" id="spPlayAgain">▶ Play Again</button>
+        <button class="sp-btn sp-btn-red"   id="spTakeAction">Take Action! →</button>
+        <button class="sp-btn sp-btn-share"  id="spShare">🔗 Share with Friends</button>
+      </div>
+    </div>
+    <!-- Right: leaderboard -->
+    <div id="scoreRight">
+      <h2 id="scorePanelTitle">🏆 Leaderboard</h2>
+      <div class="subtitle" id="scorePanelSub">Top border defenders</div>
+      <!-- Player's own stats bar -->
+      <div id="myStatsBar" style="display:none; gap:0; margin-bottom:16px; border:1px solid #D52B1E; border-radius:8px; overflow:hidden;">
+        <div class="my-stat" id="myStat1"></div>
+        <div class="my-stat" id="myStat2"></div>
+        <div class="my-stat" id="myStat3"></div>
+        <div class="my-stat" id="myStat4"></div>
+      </div>
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th class="medal"></th>
+            <th id="th-rank">#</th>
+            <th id="th-name">Name</th>
+            <th id="th-score">Score</th>
+            <th id="th-intercepted">Intercepted</th>
+            <th id="th-level">Level</th>
+          </tr>
+        </thead>
+        <tbody id="scoreTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div id="dpad">
+  <button class="dp dp-up" id="dUp">▲</button>
+  <button class="dp dp-lt" id="dLt">◀</button>
+  <div    class="dp dp-mid">🇨🇭</div>
+  <button class="dp dp-rt" id="dRt">▶</button>
+  <button class="dp dp-dn" id="dDn">▼</button>
+</div>
+<p id="hint">Arrow keys / WASD to move</p>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  ASSETS
+// ═══════════════════════════════════════════════════════
+ASSETS_PLACEHOLDER
+
+// ═══════════════════════════════════════════════════════
+//  LOADER
+// ═══════════════════════════════════════════════════════
+const IMG = {};
+let loaded = 0;
+const total = Object.keys(ASSETS_B64).length;
+function loadAssets(cb) {
+  if (total === 0) { cb(); return; }
+  for (const [k, src] of Object.entries(ASSETS_B64)) {
+    const img = new Image();
+    img.onload = img.onerror = () => { if (++loaded === total) cb(); };
+    img.src = src;
+    IMG[k] = img;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  CANVAS
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const W = 960, H = 540;
+
+const BORDER_Y    = 108;
+const GUARD_SPEED = 1;
+
+// ═══════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════
+let gameState = 'loading';
+let state, player, enemies, particles, animFrame, lastTime = 0;
+const keys = {};
+let clickZones = [];
+
+// Which panel is open on title: null | 'htp' | 'ati'
+let openPanel = null;
+
+// ═══════════════════════════════════════════════════════
+//  INPUT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+function canvasXY(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  return [(clientX - r.left) * (W / r.width), (clientY - r.top) * (H / r.height)];
+}
+function fireClick(cx, cy) {
+  for (const z of clickZones) {
+    if (cx >= z.x && cx <= z.x + z.w && cy >= z.y && cy <= z.y + z.h) { z.action(); return; }
+  }
+}
+let _lastTouchFire = 0; // ghost-click guard
+canvas.addEventListener('click', e => {
+  try { getAC(); } catch(e){}
+  if (Date.now() - _lastTouchFire < 600) return;
+  const [x, y] = canvasXY(e.clientX, e.clientY);
+  fireClick(x, y);
+});
+canvas.addEventListener('touchend', e => {
+  if (gameState === 'playing') return; // buttons handle movement; canvas touch ignored in-game
+  e.preventDefault();
+  _lastTouchFire = Date.now();
+  const t = e.changedTouches[0];
+  const [x, y] = canvasXY(t.clientX, t.clientY);
+  fireClick(x, y);
+}, { passive: false });
+// Canvas touchend — menu taps only (not used during gameplay)
+
+// D-pad
+const dMap = { dUp:'ArrowUp', dDn:'ArrowDown', dLt:'ArrowLeft', dRt:'ArrowRight' };
+
+// ── Mobile controls — button overlay ─────────────────────────────────────
+// Buttons live inside #gameWrap and overlay the canvas corners.
+// Each button sets a key on press and clears it on release/cancel.
+// A 350ms ghost-click guard stops touchend from also firing the canvas click.
+
+function setupMobileBtn(id, key) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const down = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    keys[key] = true;
+    el.classList.add('pressed');
+  };
+  const up = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    keys[key] = false;
+    el.classList.remove('pressed');
+  };
+  el.addEventListener('touchstart',  down, { passive: false });
+  el.addEventListener('touchend',    up,   { passive: false });
+  el.addEventListener('touchcancel', up,   { passive: false });
+}
+setupMobileBtn('mobLeft',  'ArrowLeft');
+setupMobileBtn('mobRight', 'ArrowRight');
+
+// Show buttons whenever game is active (playing, tutorial, level card)
+// Hide only on title screen and end screen
+// Single source of truth: show buttons only during gameplay on touch devices
+function _isTouchDevice() {
+  return navigator.maxTouchPoints > 0 ||
+         navigator.msMaxTouchPoints > 0 ||
+         ('ontouchstart' in window) ||
+         window.matchMedia('(pointer: coarse)').matches;
+}
+
+function updateMobileControls() {
+  const mc = document.getElementById('mobileControls');
+  if (!mc) return;
+  const show = _isTouchDevice() && (
+    gameState === 'playing' ||
+    gameState === 'paused'  ||
+    gameState === 'levelcard' ||
+    gameState === 'tutorial'
+  );
+  mc.classList.toggle('show', show);
+}
+
+function initMobileControls() {
+  // Called once at load — just wire up; updateMobileControls handles visibility
+  updateMobileControls();
+}
+
+// Canvas touch — only used for menu button taps, not movement
+
+// ── Responsive / device detection ──
+function isMobile() {
+  return /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)
+      || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+}
+
+function checkOrientation() {
+  const hint = document.getElementById('rotateHint');
+  if (!hint) return;
+  const portrait = window.innerHeight > window.innerWidth;
+  const mobile   = isMobile();
+  hint.style.display = (mobile && portrait) ? 'flex' : 'none';
+}
+
+function applyResponsive() {
+  checkOrientation();
+  // On mobile always show d-pad during gameplay; on desktop hide it
+  if (isMobile()) {
+    document.getElementById('dpad').style.setProperty('--mobile', '1');
+  }
+}
+
+window.addEventListener('resize',       applyResponsive);
+window.addEventListener('orientationchange', () => setTimeout(applyResponsive, 200));
+applyResponsive();
+for (const [id, key] of Object.entries(dMap)) {
+  const el = document.getElementById(id); if (!el) continue;
+  el.addEventListener('touchstart', e => { e.preventDefault(); keys[key] = true;  }, { passive: false });
+  el.addEventListener('touchend',   e => { e.preventDefault(); keys[key] = false; }, { passive: false });
+  el.addEventListener('mousedown',  () => keys[key] = true);
+  el.addEventListener('mouseup',    () => keys[key] = false);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAW UTILS
+// ═══════════════════════════════════════════════════════
+function drawImg(key, x, y, w, h) {
+  const i = IMG[key];
+  if (i && i.complete && i.naturalWidth > 0) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(i, x, y, w, h);
+  }
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+function pixRect(x, y, w, h, fill, border, bw=2) {
+  ctx.fillStyle = border || fill; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = fill;           ctx.fillRect(x+bw, y+bw, w-bw*2, h-bw*2);
+}
+function wrapText(txt, cx, y, maxW, lineH, color='#fff') {
+  ctx.fillStyle = color;
+  const words = txt.split(' '); let line = '';
+  for (const w of words) {
+    const t = line + w + ' ';
+    if (ctx.measureText(t).width > maxW && line) { ctx.fillText(line.trim(), cx, y); line = w+' '; y += lineH; }
+    else line = t;
+  }
+  ctx.fillText(line.trim(), cx, y);
+}
+
+// ═══════════════════════════════════════════════════════
+//  RED PANEL (drawn on canvas)
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  LANGUAGE SYSTEM
+// ═══════════════════════════════════════════════════════
+let lang = 'DE';
+const LANGS = ['DE', 'FR', 'IT', 'EN'];
+
+const I18N = {
+  EN: {
+    htp_title: 'HOW TO PLAY',
+    htp_lines: [
+      'You are the Swiss border guard.',
+      'Your job: Protect Switzerland.',
+      '',
+      'Move LEFT & RIGHT to block',
+      'enemies crossing the border.',
+      '',
+      '🔴 RED — block them!',
+      '   They raise the population.',
+      '',
+      '🟢 GREEN — let them through!',
+      '   Skilled workers are welcome.',
+      '',
+      'Reach 10,000,000 and you lose.',
+    ],
+    htp_cta: 'CHOOSE CAREFULLY.',
+    ati_title: 'ABOUT THE INITIATIVE',
+    ati_lines: [
+      'Switzerland is one of the most',
+      'beautiful & successful countries',
+      'in the world.',
+      '',
+      'But tens of thousands of new',
+      'immigrants arrive every year.',
+      '',
+      'Housing becomes scarce.',
+      'Infrastructure gets strained.',
+      'Nature comes under pressure.',
+      '',
+      'The 10 Million Initiative caps',
+      'Switzerland\'s population.',
+      'Vote YES — June 14.',
+    ],
+    ati_cta: 'CAN YOU HOLD THE LINE?',
+  },
+  DE: {
+    htp_title: 'WIE SPIELT MAN',
+    htp_lines: [
+      'Du bist der Schweizer Grenzwächter.',
+      'Deine Aufgabe: Schütze die Schweiz.',
+      '',
+      'Bewege dich LINKS & RECHTS,',
+      'um Eindringlinge zu blockieren.',
+      '',
+      '🔴 ROT — blockieren!',
+      '   Sie erhöhen die Bevölkerung.',
+      '',
+      '🟢 GRÜN — durchlassen!',
+      '   Fachkräfte sind willkommen.',
+      '',
+      'Bei 10 Mio. hast du verloren.',
+    ],
+    htp_cta: 'WÄHLE WEISE.',
+    ati_title: 'ZUR INITIATIVE',
+    ati_lines: [
+      'Die Schweiz ist eines der schönsten',
+      'und erfolgreichsten Länder der Welt.',
+      '',
+      'Aber jedes Jahr kommen Zehntausende',
+      'neue Einwanderer.',
+      '',
+      'Wohnraum wird knapp.',
+      'Infrastruktur gerät unter Druck.',
+      'Die Natur leidet.',
+      '',
+      'Die 10-Millionen-Initiative',
+      'begrenzt die Bevölkerung.',
+      'JA stimmen — 14. Juni.',
+    ],
+    ati_cta: 'KANNST DU DIE LINIE HALTEN?',
+  },
+  FR: {
+    htp_title: 'COMMENT JOUER',
+    htp_lines: [
+      'Tu es le garde-frontière suisse.',
+      'Ta mission: Protège la Suisse.',
+      '',
+      'Bouge à GAUCHE & DROITE pour',
+      'bloquer les intrus.',
+      '',
+      '🔴 ROUGE — bloque-les!',
+      '   Ils font monter la population.',
+      '',
+      '🟢 VERT — laisse passer!',
+      '   Les travailleurs qualifiés',
+      '   sont les bienvenus.',
+      '',
+      'À 10 millions, tu as perdu.',
+    ],
+    htp_cta: 'CHOISIS AVEC SOIN.',
+    ati_title: "L'INITIATIVE",
+    ati_lines: [
+      'La Suisse est l\'un des pays les',
+      'plus beaux et prospères du monde.',
+      '',
+      'Mais chaque année, des dizaines',
+      'de milliers d\'immigrants arrivent.',
+      '',
+      'Le logement se raréfie.',
+      'Les infrastructures saturent.',
+      'La nature est sous pression.',
+      '',
+      'L\'initiative 10 millions plafonne',
+      'la population suisse.',
+      'Votez OUI — 14 juin.',
+    ],
+    ati_cta: 'PEUX-TU TENIR LA LIGNE?',
+  },
+  IT: {
+    htp_title: 'COME GIOCARE',
+    htp_lines: [
+      'Sei la guardia di frontiera svizzera.',
+      'Il tuo compito: proteggi la Svizzera.',
+      '',
+      'Muoviti a SINISTRA & DESTRA',
+      'per bloccare i trasgressori.',
+      '',
+      '🔴 ROSSO — bloccali!',
+      '   Aumentano la popolazione.',
+      '',
+      '🟢 VERDE — lasciali passare!',
+      '   I lavoratori qualificati',
+      '   sono i benvenuti.',
+      '',
+      'A 10 milioni hai perso.',
+    ],
+    htp_cta: 'SCEGLI CON CURA.',
+    ati_title: "L'INIZIATIVA",
+    ati_lines: [
+      'La Svizzera è uno dei paesi più',
+      'belli e di successo del mondo.',
+      '',
+      'Ma ogni anno arrivano decine',
+      'di migliaia di immigrati.',
+      '',
+      'Le case scarseggiano.',
+      'Le infrastrutture sono sotto stress.',
+      'La natura è sotto pressione.',
+      '',
+      'L\'iniziativa 10 milioni limita',
+      'la popolazione svizzera.',
+      'Vota SÌ — 14 giugno.',
+    ],
+    ati_cta: 'PUOI TENERE LA LINEA?',
+  },
+};
+function t(key) { return (I18N[lang] || I18N.EN)[key]; }
+
+// ═══════════════════════════════════════════════════════
+//  RED PANEL
+// ═══════════════════════════════════════════════════════
+function drawRedPanel(x, y, w, h, title, lines, cta) {
+  // Drop shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  roundRect(x+6, y+6, w, h, 14); ctx.fill();
+
+  // Main card
+  ctx.fillStyle = '#c0392b'; roundRect(x, y, w, h, 14); ctx.fill();
+  ctx.fillStyle = '#d44235'; roundRect(x+3, y+3, w-6, h-6, 12); ctx.fill();
+
+  // Dot texture
+  ctx.fillStyle = 'rgba(0,0,0,0.07)';
+  for (let dtx = x+6; dtx < x+w-6; dtx += 6)
+    for (let dty = y+6; dty < y+h-6; dty += 6)
+      ctx.fillRect(dtx, dty, 2, 2);
+
+  // Title bar (y+3 to y+49)
+  ctx.fillStyle = '#a93226'; roundRect(x+3, y+3, w-6, 46, 12); ctx.fill();
+  ctx.fillRect(x+3, y+33, w-6, 16);
+
+  // Divider at y+52
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x+14, y+52); ctx.lineTo(x+w-14, y+52); ctx.stroke();
+
+  // Title text
+  ctx.font = 'bold 15px Arial,sans-serif';
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(title, x + w/2, y + 26);
+
+  // ── Body lines ────────────────────────────────────────
+  const ctaH    = 32;
+  const padX    = 16;
+  const maxW    = w - padX * 2;
+  const bodyTop    = y + 68;  // extra clearance below title bar
+  const bodyBottom = y + h - ctaH - 18;
+  const bodyH   = bodyBottom - bodyTop;
+
+  // Build word-wrapped line array using actual canvas measurement
+  function buildWrapped(fs) {
+    ctx.font = `bold ${fs}px Arial,sans-serif`;
+    const out = [];
+    for (const line of lines) {
+      if (line === '') { out.push(''); continue; }
+      if (ctx.measureText(line).width <= maxW) {
+        out.push(line);
+      } else {
+        const words = line.split(' ');
+        let cur = '';
+        for (const word of words) {
+          const test = cur ? cur + ' ' + word : word;
+          if (ctx.measureText(test).width > maxW) {
+            if (cur) out.push(cur);
+            cur = word;
+          } else { cur = test; }
+        }
+        if (cur) out.push(cur);
+      }
+    }
+    return out;
+  }
+
+  // Find largest fontSize where all lines fit
+  let fontSize = 16, wrapped, lineH, emptyH, totalH;
+  while (fontSize >= 10) {
+    lineH  = Math.round(fontSize * 1.6);
+    emptyH = Math.round(lineH * 0.5);
+    wrapped = buildWrapped(fontSize);
+    totalH  = wrapped.reduce((s, l) => s + (l === '' ? emptyH : lineH), 0);
+    if (totalH <= bodyH) break;
+    fontSize--;
+  }
+
+  // Draw with textBaseline='middle' so emojis don't poke above their line slot
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  let ty = bodyTop + lineH / 2;  // start at centre of first line slot
+  for (const line of wrapped) {
+    if (line === '') { ty += emptyH; continue; }
+    if (ty > bodyBottom) break;
+    ctx.font = `bold ${fontSize}px Arial,sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(line, x + padX, ty);
+    ty += lineH;
+  }
+
+  // CTA button
+  const ctaW = w - 24, ctaX = x + 12, ctaY = y + h - ctaH - 12;
+  ctx.fillStyle = 'rgba(255,255,255,0.93)';
+  roundRect(ctaX, ctaY, ctaW, ctaH, 6); ctx.fill();
+  ctx.font = 'bold 13px Arial,sans-serif';
+  ctx.fillStyle = '#a93226'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(cta, ctaX + ctaW/2, ctaY + ctaH/2);
+
+  // Close ✕
+  ctx.font = 'bold 16px Arial,sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('✕', x + w - 18, y + 18);
+  ctx.textBaseline = 'alphabetic';
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  TITLE SCREEN
+// ═══════════════════════════════════════════════════════
+function drawTitleScreen() {
+  gameState = 'title';
+  updateMobileControls();
+  ctx.imageSmoothingEnabled = false;
+  clickZones = [];
+
+  // Background
+  drawImg(lang !== 'EN' ? `SwissBorderGame_Background_${lang}` : 'SwissBorderGame_Background_DE', 0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Title image — language-aware ─────────────────────
+  const ti = IMG[`Title_${lang}`] || IMG['Title_EN'];
+  if (ti && ti.complete) {
+    const tw = 560, th = Math.round(tw * (ti.naturalHeight / ti.naturalWidth));
+    drawImg(`Title_${lang}`, (W - tw) / 2, 18, tw, th);
+  }
+
+  // ── Language toggles (top-right) ─────────────────────
+  const langBtnW = 38, langBtnH = 24, langGap = 6;
+  const langStartX = W - (langBtnW * LANGS.length + langGap * (LANGS.length - 1)) - 14;
+  const langY = 14;
+  LANGS.forEach((l, i) => {
+    const lx = langStartX + i * (langBtnW + langGap);
+    const active = l === lang;
+    ctx.fillStyle = active ? '#D52B1E' : 'rgba(0,0,0,0.55)';
+    roundRect(lx, langY, langBtnW, langBtnH, 4); ctx.fill();
+    if (active) {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+      roundRect(lx, langY, langBtnW, langBtnH, 4); ctx.stroke();
+    }
+    ctx.font = (active ? 'bold ' : '') + '11px "Courier New",monospace';
+    ctx.fillStyle = active ? '#fff' : 'rgba(255,255,255,0.55)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(l, lx + langBtnW / 2, langY + langBtnH / 2);
+    clickZones.push({
+      x: lx, y: langY, w: langBtnW, h: langBtnH,
+      action: () => { lang = l; drawTitleScreen(); }
+    });
+  });
+  ctx.textBaseline = 'alphabetic';
+
+  // ── PLAY button ──────────────────────────────────────
+  const playImg = IMG['Play_Button'];
+  const playW = 220, playH = playImg && playImg.complete
+    ? Math.round(playW * (playImg.naturalHeight / playImg.naturalWidth)) : 92;
+  const playX = (W - playW) / 2, playY = 220;
+  drawImg('Play_Button', playX, playY, playW, playH);
+  clickZones.push({ x: playX, y: playY, w: playW, h: playH + 10, action: startGame });
+
+  // ── Bottom button row — language-aware ───────────────
+  const htpKey = `HTP_${lang}`;
+  const atiKey = `ATI_${lang}`;
+  const htpImg = IMG[htpKey] || IMG['HTP_EN'];
+  const btnW = 280, btnH = htpImg && htpImg.complete
+    ? Math.round(btnW * (htpImg.naturalHeight / htpImg.naturalWidth)) : 96;
+  const btnY = H - btnH - 16;
+  const gap  = 22;
+  const totalBW = btnW * 2 + gap;
+  const bx1 = (W - totalBW) / 2;
+  const bx2 = bx1 + btnW + gap;
+
+  drawImg(htpKey, bx1, btnY, btnW, btnH);
+  drawImg(atiKey, bx2, btnY, btnW, btnH);
+
+  clickZones.push({
+    x: bx1, y: btnY, w: btnW, h: btnH,
+    action: () => { openPanel = openPanel === 'htp' ? null : 'htp'; drawTitleScreen(); }
+  });
+  clickZones.push({
+    x: bx2, y: btnY, w: btnW, h: btnH,
+    action: () => { openPanel = openPanel === 'ati' ? null : 'ati'; drawTitleScreen(); }
+  });
+
+  // ── Panels (taller/wider for larger text) ─────────────
+  // Full-height centered panel — avoids title/button collisions
+  const PW = 440, PH = 510;
+  const panelX = (W - PW) / 2;
+  const panelY = 15;
+
+  if (openPanel === 'htp') {
+    drawRedPanel(panelX, panelY, PW, PH, t('htp_title'), t('htp_lines'), t('htp_cta'));
+    clickZones.push({ x: panelX, y: panelY, w: PW, h: PH,
+      action: () => { openPanel = null; drawTitleScreen(); }
+    });
+  }
+
+  if (openPanel === 'ati') {
+    drawRedPanel(panelX, panelY, PW, PH, t('ati_title'), t('ati_lines'), t('ati_cta'));
+    clickZones.push({ x: panelX, y: panelY, w: PW, h: PH,
+      action: () => { openPanel = null; drawTitleScreen(); }
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  LEVEL BACKGROUND
+// ═══════════════════════════════════════════════════════
+function drawLevelBg() {
+  // Each game level uses its own background map
+  const lvlKey = gameState === 'playing' ? `lvl${getLevel(state.wave)}` : 'lvl1';
+  const bg = IMG[lvlKey] || IMG['lvl1'];
+  if (bg && bg.complete && bg.naturalWidth > 0) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bg, 0, 0, W, H);
+    ctx.imageSmoothingEnabled = false;
+  }
+
+  // Border line — dashed red horizontal
+  ctx.strokeStyle = '#D52B1E';
+  ctx.lineWidth   = 3;
+  ctx.setLineDash([20, 12]);
+  ctx.beginPath(); ctx.moveTo(0, BORDER_Y); ctx.lineTo(W, BORDER_Y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Safe-zone tint above border
+  ctx.fillStyle = 'rgba(0,60,0,0.15)';
+  ctx.fillRect(0, 0, W, BORDER_Y);
+
+  // Label — dark pill for readability against busy background
+  const labelText = '◀  GRENZE / BORDER  ▶';
+  ctx.font = 'bold 11px "Courier New",monospace';
+  ctx.textAlign = 'left';
+  const labelW = ctx.measureText(labelText).width + 16;
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  roundRect(10, BORDER_Y - 22, labelW, 18, 4); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText(labelText, 18, BORDER_Y - 8);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PLAYER SPRITE  (PNG asset)
+// ═══════════════════════════════════════════════════════
+function drawPlayer(x, y, size, hitFlash) {
+  const langKey = lang !== 'EN' ? lang : 'DE';
+  const useHit  = hitFlash > 0;
+  const img     = useHit ? (IMG[`Player_HIT_${langKey}`] || IMG[`Player_${langKey}`])
+                          : IMG[`Player_${langKey}`];
+
+  const iW = img ? (img.naturalWidth  || img.width  || 0) : 0;
+  const iH = img ? (img.naturalHeight || img.height || 0) : 0;
+  if (!img || iW === 0) return;
+
+  // Both normal and HIT are 1920×1080 — use same crop so body stays identical size.
+  // HIT: sign extends left to ~x:620, so widen crop left by 80px.
+  const srcX = useHit ? 620 : 700;
+  const srcY = 20;
+  const srcW = useHit ? 610 : 530;   // wider crop captures sign without scaling body up
+  const srcH = 1045;
+
+  const drawH = size;
+  const drawW = Math.round(drawH * (srcW / srcH));
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  // Anchor right edge of crop to keep character body in same position
+  // Normal: body centred at x, so draw at x - drawW/2
+  // HIT: body is on right side of wider crop, offset left by extra 80px scaled
+  const extraLeft = useHit ? Math.round(drawH * (80 / srcH)) : 0;
+  ctx.drawImage(img, srcX, srcY, srcW, srcH, x - drawW / 2 + extraLeft, y - drawH / 2, drawW, drawH);
+  ctx.imageSmoothingEnabled = false;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CROSSER (top-down) — red/green identifier circle at feet
+// ═══════════════════════════════════════════════════════
+// Per-level sprite pools
+const LEVEL_SPRITES = {
+  1: ['AS_1','AS_2','AS_3','AS_4','AS_5','AS_6'],
+  2: ['CT_1','CT_2','CT_3','CT_4','CT_5','CT_6'],
+  3: ['AF_1','AF_2','AF_3','AF_4','AF_5','AF_6'],
+  4: ['IE_1','IE_2','IE_3','IE_4','IE_5','IE_6'],
+  5: ['U_1','U_2','U_3','U_4','U_5','U_5'],
+};
+const SKILLED_SPRITES = ['SW_1','SW_2','SW_3','SW_4','SW_5','SW_6'];
+
+// ── Corridor path bounds ──────────────────────────────
+// Derived from the trapezoid path mask (GameGuards.png).
+// The valid movement corridor narrows toward the border (top).
+// Top of corridor (y=112): left=165, right=794
+// Bottom of canvas (y=540): left=50,  right=910
+const PATH_Y_TOP    = 112;
+const PATH_Y_BOTTOM = 540;
+const PATH_LEFT_TOP = 165, PATH_LEFT_BOTTOM = 50;
+const PATH_RIGHT_TOP = 794, PATH_RIGHT_BOTTOM = 910;
+
+function clampToPath(x, y) {
+  const pb = pathBounds(y);
+  return Math.max(pb.left + 8, Math.min(pb.right - 8, x));
+}
+
+function pathBounds(y) {
+  const t = Math.max(0, Math.min(1, (y - PATH_Y_TOP) / (PATH_Y_BOTTOM - PATH_Y_TOP)));
+  const left  = PATH_LEFT_TOP  + t * (PATH_LEFT_BOTTOM  - PATH_LEFT_TOP);
+  const right = PATH_RIGHT_TOP + t * (PATH_RIGHT_BOTTOM - PATH_RIGHT_TOP);
+  return { left: Math.max(0, left), right: Math.min(W, right) };
+}
+
+function drawCrosser(x, y, size, frame, skilled, level, spriteKey, e) {
+  const s = size, bob = Math.sin(frame * 0.22) * 1.4;
+  const lvl = level || getLevel(state.wave);
+
+  // ── Identifier circle at feet ──
+  // Disguised L4 enemies show green ✓ just like skilled workers
+  const appearsGood = skilled || (e && e.disguised);
+  const circleR = s * 0.18;
+  const circleY = y + s * 0.62 + bob;
+  ctx.fillStyle = appearsGood ? '#15803d' : '#b91c1c';
+  ctx.beginPath(); ctx.arc(x, circleY, circleR + 3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = appearsGood ? '#22c55e' : '#ef4444';
+  ctx.beginPath(); ctx.arc(x, circleY, circleR, 0, Math.PI*2); ctx.fill();
+  ctx.font = `${Math.round(s * 0.15)}px serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(appearsGood ? '✓' : '✕', x, circleY);
+  ctx.textBaseline = 'alphabetic';
+
+  // ── Shadow ──
+  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  ctx.beginPath(); ctx.ellipse(x+2, y+s*0.55+bob, s*0.22, s*0.07, 0, 0, Math.PI*2); ctx.fill();
+
+  if (skilled) {
+    // ── Skilled worker — use SW sprite pool ──
+    const swKey = (e && e.spriteKey) || SKILLED_SPRITES[Math.abs(Math.floor(x * 7)) % SKILLED_SPRITES.length];
+    const sw = IMG[swKey];
+    const swW = sw ? (sw.naturalWidth || sw.width || 0) : 0;
+    const swH = sw ? (sw.naturalHeight || sw.height || 0) : 0;
+    if (sw && swW > 0 && swH > 0) {
+      const dh = s, dw = Math.round(dh * (swW / swH));
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(sw, x - dw/2, y - dh*0.5 + bob, dw, dh);
+      ctx.imageSmoothingEnabled = false;
+    } else {
+      // Fallback green blob
+      ctx.fillStyle = '#15803d';
+      ctx.beginPath(); ctx.ellipse(x, y+bob, s*0.24, s*0.3, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.arc(x, y-s*0.22+bob, s*0.2, 0, Math.PI*2); ctx.fill();
+    }
+    return;
+  }
+
+  // ── Enemy — use the sprite assigned at spawn time ──
+  // L4 disguised: render using the assigned SW sprite (looks like skilled worker)
+  if (e && e.disguised) {
+    const dsp = IMG[e.spriteKey];
+    const dspW = dsp ? (dsp.naturalWidth || dsp.width || 0) : 0;
+    const dspH = dsp ? (dsp.naturalHeight || dsp.height || 0) : 0;
+    if (dsp && dspW > 0) {
+      const dh = s, dw = Math.round(dh * (dspW / dspH));
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(dsp, x - dw/2, y - dh*0.5 + bob, dw, dh);
+      ctx.imageSmoothingEnabled = false;
+    }
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    return;
+  }
+
+  const key = spriteKey || (LEVEL_SPRITES[lvl] || LEVEL_SPRITES[1])[0];
+  const sp = IMG[key];
+  const spW = sp ? (sp.naturalWidth || sp.width || 0) : 0;
+  const spH = sp ? (sp.naturalHeight || sp.height || 0) : 0;
+
+  if (sp && spW > 0 && spH > 0) {
+    const dh = s, dw = Math.round(dh * (spW / spH));
+    ctx.imageSmoothingEnabled = false;
+    // L4 disguise reveal: flash white briefly
+    if (e && e.hitFlash > 0 && Math.floor(e.hitFlash / 4) % 2 === 0) {
+      ctx.globalAlpha = 0.4;
+    }
+    ctx.drawImage(sp, x - dw/2, y - dh*0.5 + bob, dw, dh);
+    ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = false;
+  } else {
+    // Fallback drawn blob if sprite not loaded
+    const bc = ['#991b1b','#1e3a8a','#6b21a8','#7c2d12','#064e3b'][lvl-1] || '#991b1b';
+    ctx.fillStyle = bc;
+    ctx.beginPath(); ctx.ellipse(x, y+bob, s*0.3, s*0.38, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#f0c070';
+    ctx.beginPath(); ctx.arc(x, y-s*0.22+bob, s*0.2, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PARTICLES
+// ═══════════════════════════════════════════════════════
+function spawnParticles(x, y, color, n=10) {
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI*2/n)*i + Math.random()*0.5, spd = 2+Math.random()*4;
+    particles.push({ x, y, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd*0.7, color, life:1, r:3+Math.random()*4.5 });
+  }
+}
+function tickParticles() {
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life-=0.038;
+    if (p.life<=0) particles.splice(i,1);
+  }
+}
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ═══════════════════════════════════════════════════════
+//  FLOATING TEXT POPUPS
+// ═══════════════════════════════════════════════════════
+let floats = []; // floating score/pop indicators
+
+function spawnFloat(x, y, text, color, size=13) {
+  floats.push({ x, y, text, color, size, life:1.0, vy:-0.9 });
+}
+
+function tickFloats() {
+  for (let i = floats.length-1; i >= 0; i--) {
+    const f = floats[i];
+    f.y  += f.vy;
+    f.vy *= 0.97;
+    // Bonus floats (size >= 20) last longer
+    f.life -= f.size >= 22 ? 0.010 : f.size >= 18 ? 0.013 : 0.018;
+    if (f.life <= 0) floats.splice(i, 1);
+  }
+}
+
+function drawFloats() {
+  ctx.textAlign = 'center';
+  for (const f of floats) {
+    ctx.globalAlpha = Math.min(f.life * 2, 1);
+    ctx.font = `bold ${f.size}px "Courier New",monospace`;
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillText(f.text, f.x + 1, f.y + 1);
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+}
+
+// ═══════════════════════════════════════════════════════
+//  SOUND ENGINE  (Web Audio API — no external files)
+// ═══════════════════════════════════════════════════════
+let _ac = null;
+function getAC() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ac.state === 'suspended') _ac.resume();
+  return _ac;
+}
+
+function playTone(freq, type, duration, vol=0.3, fadeOut=true) {
+  try {
+    const ac = getAC();
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, ac.currentTime);
+    if (fadeOut) gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+    osc.start(ac.currentTime);
+    osc.stop(ac.currentTime + duration);
+  } catch(e) {}
+}
+
+function playNoise(duration, vol=0.15) {
+  try {
+    const ac = getAC();
+    const buf = ac.createBuffer(1, ac.sampleRate * duration, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource();
+    const gain = ac.createGain();
+    const filter = ac.createBiquadFilter();
+    filter.type = 'bandpass'; filter.frequency.value = 800;
+    src.buffer = buf;
+    src.connect(filter); filter.connect(gain); gain.connect(ac.destination);
+    gain.gain.setValueAtTime(vol, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+    src.start(); src.stop(ac.currentTime + duration);
+  } catch(e) {}
+}
+
+const SFX = {
+  block() {
+    playTone(220, 'square', 0.08, 0.25);
+    playTone(180, 'square', 0.12, 0.15);
+  },
+  wrongBlock() {
+    playTone(140, 'sawtooth', 0.18, 0.2);
+    playTone(110, 'sawtooth', 0.15, 0.12);
+  },
+  enemyCross() {
+    playTone(80, 'sine', 0.25, 0.3);
+    playTone(60, 'sine', 0.3, 0.2);
+    playNoise(0.15, 0.08);
+  },
+  skilledCross() {
+    playTone(660, 'sine', 0.12, 0.2);
+    playTone(880, 'sine', 0.18, 0.15);
+  },
+  levelStart() {
+    [330, 440, 550, 660].forEach((f, i) => {
+      setTimeout(() => playTone(f, 'sine', 0.15, 0.2), i * 80);
+    });
+  },
+  rushMode() {
+    playTone(440, 'sawtooth', 0.1, 0.25);
+    playTone(554, 'sawtooth', 0.12, 0.2);
+    setTimeout(() => playTone(660, 'sawtooth', 0.15, 0.3), 120);
+  },
+  gameOver() {
+    [440, 350, 250, 180].forEach((f, i) => {
+      setTimeout(() => playTone(f, 'sawtooth', 0.3, 0.25), i * 160);
+    });
+  },
+  levelClear() {
+    [440, 550, 660, 880].forEach((f, i) => {
+      setTimeout(() => playTone(f, 'triangle', 0.2, 0.18), i * 100);
+    });
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+//  AMBIENT AUDIO ENGINE
+// ═══════════════════════════════════════════════════════
+const AMBIENT = (() => {
+  let nodes = [];   // active ambient nodes to stop on pause/end
+  let running = false;
+  let timers = [];
+
+  function stopAll() {
+    running = false;
+    nodes.forEach(n => { try { n.stop(); } catch(e){} });
+    nodes = [];
+    timers.forEach(t => clearTimeout(t));
+    timers = [];
+  }
+
+  // ── Wind layer — gentle filtered noise ──
+  function startWind(vol = 0.04) {
+    try {
+      const ac = getAC();
+      const buf = ac.createBuffer(1, ac.sampleRate * 4, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const lp = ac.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 400; lp.Q.value = 0.5;
+      const gain = ac.createGain();
+      gain.gain.setValueAtTime(vol, ac.currentTime);
+      // Slow volume swell
+      gain.gain.linearRampToValueAtTime(vol * 1.5, ac.currentTime + 6);
+      gain.gain.linearRampToValueAtTime(vol * 0.7, ac.currentTime + 12);
+      src.connect(lp); lp.connect(gain); gain.connect(ac.destination);
+      src.start();
+      nodes.push(src);
+    } catch(e) {}
+  }
+
+  // ── Bird chirp — short sine bursts ──
+  function chirp() {
+    if (!running) return;
+    try {
+      const ac = getAC();
+      const baseFreq = 1800 + Math.random() * 1200;
+      const chirpCount = Math.floor(Math.random() * 3) + 2;
+      for (let i = 0; i < chirpCount; i++) {
+        const t = ac.currentTime + i * 0.08;
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(baseFreq, t);
+        osc.frequency.linearRampToValueAtTime(baseFreq + 400, t + 0.04);
+        gain.gain.setValueAtTime(0.0, t);
+        gain.gain.linearRampToValueAtTime(0.06, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+        osc.start(t); osc.stop(t + 0.08);
+        nodes.push(osc);
+      }
+    } catch(e) {}
+    // Schedule next chirp
+    const delay = 2000 + Math.random() * 5000;
+    const t = setTimeout(chirp, delay);
+    timers.push(t);
+  }
+
+  // ── Footstep — soft low click ──
+  function footstep() {
+    if (!running || !state || !state.running) return;
+    try {
+      const ac = getAC();
+      // Only play footsteps if player is moving
+      const moving = keys['ArrowLeft'] || keys['ArrowRight'] || keys['ArrowUp'] || keys['ArrowDown']
+                  || keys['a'] || keys['d'] || keys['w'] || keys['s']
+                  || keys['A'] || keys['D'] || keys['W'] || keys['S'];
+      if (moving) {
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.type = 'sine'; osc.frequency.value = 80 + Math.random() * 40;
+        gain.gain.setValueAtTime(0.12, ac.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.06);
+        osc.start(ac.currentTime); osc.stop(ac.currentTime + 0.07);
+        nodes.push(osc);
+        // Second foot slightly offset
+        setTimeout(() => {
+          if (!running) return;
+          try {
+            const ac2 = getAC();
+            const o2 = ac2.createOscillator(); const g2 = ac2.createGain();
+            o2.connect(g2); g2.connect(ac2.destination);
+            o2.type = 'sine'; o2.frequency.value = 75 + Math.random() * 30;
+            g2.gain.setValueAtTime(0.10, ac2.currentTime);
+            g2.gain.exponentialRampToValueAtTime(0.001, ac2.currentTime + 0.05);
+            o2.start(ac2.currentTime); o2.stop(ac2.currentTime + 0.06);
+            nodes.push(o2);
+          } catch(e) {}
+        }, 280);
+      }
+    } catch(e) {}
+    const t = setTimeout(footstep, 500 + Math.random() * 100);
+    timers.push(t);
+  }
+
+  // ── Distant ambient hum — low drone ──
+  function startDrone(vol = 0.018) {
+    try {
+      const ac = getAC();
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.type = 'sine'; osc.frequency.value = 55;
+      gain.gain.setValueAtTime(0, ac.currentTime);
+      gain.gain.linearRampToValueAtTime(vol, ac.currentTime + 3);
+      osc.start(ac.currentTime);
+      nodes.push(osc);
+    } catch(e) {}
+  }
+
+  // ── City traffic hum — broadband noise through resonant filter ──
+  function startTraffic(vol = 0.05) {
+    try {
+      const ac = getAC();
+      const buf = ac.createBuffer(1, ac.sampleRate * 3, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      // Low rumble
+      const lp = ac.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 300; lp.Q.value = 0.8;
+      const gain = ac.createGain();
+      gain.gain.setValueAtTime(0, ac.currentTime);
+      gain.gain.linearRampToValueAtTime(vol, ac.currentTime + 2.5);
+      src.connect(lp); lp.connect(gain); gain.connect(ac.destination);
+      src.start();
+      nodes.push(src);
+    } catch(e) {}
+  }
+
+  // ── Tram bell — two-tone ding ──
+  function tramBell() {
+    if (!running) return;
+    try {
+      const ac = getAC();
+      [[880, 0], [660, 0.18]].forEach(([freq, delay]) => {
+        const t = ac.currentTime + delay;
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.type = 'sine'; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+        osc.start(t); osc.stop(t + 1.3);
+        nodes.push(osc);
+      });
+    } catch(e) {}
+    // Ring again every 18–35 seconds
+    const t = setTimeout(tramBell, 18000 + Math.random() * 17000);
+    timers.push(t);
+  }
+
+  // ── City crowd murmur — layered detuned oscillators ──
+  function startCrowdMurmur(vol = 0.022) {
+    try {
+      const ac = getAC();
+      [180, 210, 240, 195].forEach((freq, i) => {
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        const lfo = ac.createOscillator();
+        const lfoGain = ac.createGain();
+        lfo.frequency.value = 0.3 + i * 0.07;
+        lfoGain.gain.value = 8;
+        lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.type = 'sine'; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, ac.currentTime);
+        gain.gain.linearRampToValueAtTime(vol * (0.8 + Math.random() * 0.4), ac.currentTime + 3 + i * 0.5);
+        osc.start(ac.currentTime); lfo.start(ac.currentTime);
+        nodes.push(osc, lfo);
+      });
+    } catch(e) {}
+  }
+
+  // ── Car horn — short blip ──
+  function carHorn() {
+    if (!running) return;
+    try {
+      const ac = getAC();
+      const freq = [370, 440, 330][Math.floor(Math.random() * 3)];
+      const dur = 0.15 + Math.random() * 0.2;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.type = 'sawtooth'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.08, ac.currentTime);
+      gain.gain.setValueAtTime(0.08, ac.currentTime + dur - 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+      osc.start(ac.currentTime); osc.stop(ac.currentTime + dur + 0.05);
+      nodes.push(osc);
+    } catch(e) {}
+    // Honk again every 8–25 seconds
+    const t = setTimeout(carHorn, 8000 + Math.random() * 17000);
+    timers.push(t);
+  }
+
+  // ── Cow moo — low formant sweep ──
+  function moo() {
+    if (!running) return;
+    try {
+      const ac = getAC();
+      const dur = 1.2 + Math.random() * 0.8;
+      [[80, 0.09], [160, 0.04], [240, 0.02]].forEach(([freq, vol]) => {
+        const osc  = ac.createOscillator();
+        const gain = ac.createGain();
+        const lp   = ac.createBiquadFilter();
+        lp.type = 'lowpass'; lp.frequency.value = 600;
+        osc.connect(lp); lp.connect(gain); gain.connect(ac.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq * 1.15, ac.currentTime);
+        osc.frequency.linearRampToValueAtTime(freq * 0.92, ac.currentTime + dur * 0.6);
+        osc.frequency.linearRampToValueAtTime(freq * 0.88, ac.currentTime + dur);
+        gain.gain.setValueAtTime(0, ac.currentTime);
+        gain.gain.linearRampToValueAtTime(vol, ac.currentTime + 0.18);
+        gain.gain.setValueAtTime(vol, ac.currentTime + dur * 0.7);
+        gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur + 0.1);
+        osc.start(ac.currentTime);
+        osc.stop(ac.currentTime + dur + 0.15);
+        nodes.push(osc);
+      });
+    } catch(e) {}
+    const t = setTimeout(moo, 8000 + Math.random() * 14000);
+    timers.push(t);
+  }
+
+  return {
+    start() {
+      if (running) return;
+      running = true;
+      const lvl = typeof getLevel === 'function' ? getLevel(state ? state.wave : 1) : 1;
+      if (lvl === 5) {
+        startTraffic(0.025);
+        startCrowdMurmur(0.010);
+        const t1 = setTimeout(tramBell, 3000 + Math.random() * 4000);
+        const t2 = setTimeout(carHorn, 5000 + Math.random() * 5000);
+        const t3 = setTimeout(footstep, 600);
+        timers.push(t1, t2, t3);
+      } else {
+        startWind();
+        startDrone();
+        const t1 = setTimeout(chirp, 800);
+        const t2 = setTimeout(chirp, 2200);
+        const t3 = setTimeout(chirp, 4100);
+        const t4 = setTimeout(footstep, 600);
+        timers.push(t1, t2, t3, t4);
+        // Level 3: add cows
+        if (lvl === 3) {
+          const t5 = setTimeout(moo, 2000 + Math.random() * 3000);
+          timers.push(t5);
+        }
+      }
+    },
+    stop: stopAll,
+    pause: stopAll,
+  };
+})();
+
+// ═══════════════════════════════════════════════════════
+//  END SCREEN
+// ═══════════════════════════════════════════════════════
+let endAnim = { frame: 0, rafId: null };
+
+function drawEndScreen(win) {
+  if (endAnim.rafId) cancelAnimationFrame(endAnim.rafId);
+  endAnim.frame = 0;
+
+  // Layout constants — logo centred, strip at bottom
+  const LOGO_SIZE  = 280;                        // dominant logo display size
+  const LOGO_X     = W / 2;
+  const LOGO_Y     = H / 2 - 30;                // slightly above centre
+  const STRIP_H    = 185;                        // bottom strip height
+  const STRIP_Y    = H - STRIP_H;
+  const BTN_W      = 180, BTN_H = 46;
+  const BTN_GAP    = 20;
+  const BTN_Y      = STRIP_Y + (STRIP_H - BTN_H) / 2;
+  const TOTAL_BTN  = BTN_W * 2 + BTN_GAP;
+  const pb = { x: W/2 - TOTAL_BTN/2,           y: BTN_Y, w: BTN_W, h: BTN_H };
+  const lb = { x: W/2 - TOTAL_BTN/2 + BTN_W + BTN_GAP, y: BTN_Y, w: BTN_W, h: BTN_H };
+
+  // Logo src crop (1920×1080 — logo is centre ~40%)
+  const srcX = 575, srcY = 108, srcW = 770, srcH = 770;
+
+  function renderFrame() {
+    endAnim.frame++;
+    const f = endAnim.frame;
+
+    // ── Background ──────────────────────────────────────
+    ctx.clearRect(0, 0, W, H);
+    drawLevelBg();
+
+    // Full screen dark overlay fades in
+    const overlayT = Math.min(f / 25, 1);
+    ctx.fillStyle = `rgba(0,0,0,${0.72 * overlayT})`;
+    ctx.fillRect(0, 0, W, H);
+
+    // ── Result text — fades in above logo ───────────────
+    const textT = Math.min(Math.max((f - 8) / 20, 0), 1);
+    ctx.globalAlpha = textT;
+    ctx.font = 'bold 28px "Courier New",monospace';
+    ctx.fillStyle = '#f87171';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(
+      '✕  BORDER OVERWHELMED',
+      W / 2, LOGO_Y - LOGO_SIZE * 0.62
+    );
+    ctx.globalAlpha = 1;
+
+    // ── Logo — drops & bounces in ────────────────────────
+    const logoT = Math.min(Math.max((f - 5) / 30, 0), 1);
+    // Bounce easing: overshoot then settle
+    const bounce = logoT < 0.65
+      ? logoT / 0.65                                          // ease in
+      : 1 + Math.sin((logoT - 0.65) / 0.35 * Math.PI) * 0.12 * (1 - logoT); // settle
+    const logoY  = LOGO_Y - (1 - bounce) * 140;
+    const logoSc = 0.4 + bounce * 0.6;
+    const drawW  = LOGO_SIZE * logoSc, drawH = LOGO_SIZE * logoSc;
+
+    const li = IMG[lang !== 'EN' ? `Logo_${lang}` : 'Logo'];
+    if (li && li.complete) {
+      ctx.globalAlpha = Math.min(logoT * 1.8, 1);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(li, srcX, srcY, srcW, srcH, LOGO_X - drawW/2, logoY - drawH/2, drawW, drawH);
+      ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = false;
+    }
+
+    // ── Bottom strip ─────────────────────────────────────
+    const stripT = Math.min(Math.max((f - 20) / 22, 0), 1);
+    const stripEase = 1 - Math.pow(1 - stripT, 3);
+    const stripSlide = STRIP_Y + (1 - stripEase) * STRIP_H;
+
+    ctx.globalAlpha = stripEase;
+
+    // Strip background
+    ctx.fillStyle = 'rgba(10,10,10,0.96)';
+    ctx.fillRect(0, stripSlide, W, STRIP_H);
+
+    // Thin top border line — win=green, lose=red
+    ctx.fillStyle = '#D52B1E';
+    ctx.fillRect(0, stripSlide, W, 3);
+
+    // ── Stats row ──────────────────────────────────────
+    const PAD = 28;
+    const statItems = [
+      { label: 'SCORE',        val: String(state.score),        col: '#fff' },
+      { label: 'INTERCEPTED',  val: String(state.intercepted),  col: '#fff' },
+      { label: 'LEVEL',         val: String(state.wave),         col: '#fff' },
+    ];
+    const statW = (W - PAD*2) / 3;
+    const statY = stripSlide + 18;
+
+    statItems.forEach((item, i) => {
+      const ix = PAD + i * statW + statW / 2;
+      // Divider between items
+      if (i > 0) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(PAD + i*statW, statY-4); ctx.lineTo(PAD + i*statW, statY+30); ctx.stroke();
+      }
+      ctx.font = 'bold 28px "Courier New",monospace';
+      ctx.fillStyle = item.col;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(item.val, ix, statY + 22);
+      ctx.font = '9px "Courier New",monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.fillText(item.label, ix, statY + 5);
+    });
+
+    // ── Skilled workers pill ─────────────────────────
+    const pillW = 260, pillH = 28, pillX = W/2 - pillW/2, pillY = stripSlide + 56;
+    ctx.fillStyle = 'rgba(34,197,94,0.15)';
+    roundRect(pillX, pillY, pillW, pillH, 14); ctx.fill();
+    ctx.strokeStyle = 'rgba(34,197,94,0.4)'; ctx.lineWidth = 1;
+    roundRect(pillX, pillY, pillW, pillH, 14); ctx.stroke();
+    ctx.font = 'bold 13px "Courier New",monospace';
+    ctx.fillStyle = '#4ade80';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🟢  ' + (state.skilledCrossed||0) + '  skilled workers crossed', W/2, pillY + pillH/2);
+
+    // ── Buttons ──────────────────────────────────────
+    const actualBtnY = stripSlide + 110;
+    const ABW = 200, ABH = 42, ABGAP = 16;
+    const abx1 = W/2 - ABW - ABGAP/2, abx2 = W/2 + ABGAP/2;
+
+    const cta = CTA_TEXT[lang] || CTA_TEXT.EN;
+    // CTA text above buttons
+    const ctaTextY = stripSlide + 62;
+    ctx.font = 'bold 11px "Courier New",monospace';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(cta.title, W/2, ctaTextY);
+    ctx.font = '9px "Courier New",monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    // Word-wrap body into two lines max
+    const bodyWords = cta.body.split(' ');
+    let line1 = '', line2 = '', done = false;
+    for (const w of bodyWords) {
+      if (!done && ctx.measureText(line1 + w + ' ').width < W - 80) line1 += w + ' ';
+      else { done = true; line2 += w + ' '; }
+    }
+    ctx.fillText(line1.trim(), W/2, ctaTextY + 13);
+    ctx.fillText(line2.trim(), W/2, ctaTextY + 24);
+
+    pixRect(abx1, actualBtnY, ABW, ABH, '#16a34a', '#14532d', 2);
+    ctx.font = 'bold 11px "Courier New",monospace';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(cta.play, abx1 + ABW/2, actualBtnY + ABH/2);
+
+    pixRect(abx2, actualBtnY, ABW, ABH, '#D52B1E', '#7f1d1d', 2);
+    ctx.font = 'bold 11px "Courier New",monospace';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(cta.btn + ' →', abx2 + ABW/2, actualBtnY + ABH/2);
+
+    if (!pb._updated) { pb.x = abx1; pb.y = actualBtnY; pb.w = ABW; pb.h = ABH; pb._updated = true; }
+    if (!lb._updated) { lb.x = abx2; lb.y = actualBtnY; lb.w = ABW; lb.h = ABH; lb._updated = true; }
+
+    ctx.globalAlpha = 1;
+    ctx.textBaseline = 'alphabetic';
+
+    // Continue animating or lock in click zones
+    if (f < 52) {
+      endAnim.rafId = requestAnimationFrame(renderFrame);
+    } else {
+      clickZones = [
+        { x: abx1, y: actualBtnY, w: ABW, h: ABH, action: startGame },
+        { x: abx2, y: actualBtnY, w: ABW, h: ABH,
+          action: () => window.open('https://nachhaltigkeitsinitiative.ch/', '_blank') },
+      ];
+    }
+  }
+
+  endAnim.rafId = requestAnimationFrame(renderFrame);
+}
+
+// ═══════════════════════════════════════════════════════
+//  WAVE CONFIG
+// ═══════════════════════════════════════════════════════
+//  WAVE CONFIG  — exactly 1-in-10 are "good" (skilled)
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  WAVE CONFIG  — every 3rd wave is SURGE (3× enemies)
+// ═══════════════════════════════════════════════════════
+const LEVEL_NAMES = [
+  'ASYLUM SEEKERS',
+  'CRIMINAL TOURISTS',
+  'UNDOCUMENTED ARRIVALS',
+  'EXTREMISTS',
+  'UNEMPLOYMENT SCAMMERS',
+];
+
+const LEVEL_SPLASH = {"EN": [["ASYLUM PRESSURE", "Switzerland is growing fast. Too fast.", "Asylum applications are rising and the system is under pressure.", "Housing is scarce, infrastructure is stretched, and costs are climbing.", "How much more can Switzerland take?"], ["CRIMINAL TOURISM", "Open borders come with consequences.", "Criminals exploit the system and disappear again.", "Police and courts are under pressure.", "Security is no longer guaranteed everywhere."], ["FAMILY REUNIFICATION & ARRIVALS", "Migration doesn't stop. It multiplies.", "Family reunification drives long-term population growth.", "Schools, housing, and communities are pushed to their limits.", "Integration can't keep up with the pace."], ["SECURITY THREATS", "When systems are overloaded, risks increase.", "Threats are harder to detect and prevent.", "Even rare failures can have serious consequences.", "Control is the key to security."], ["SOCIAL SYSTEM STRAIN", "Growth has a cost.", "More people rely on social systems and public support.", "Unemployment insurance and welfare are under pressure.", "Who will pay the price?"]], "DE": [["ASYLDRUCK", "Die Schweiz wächst. Zu schnell.", "Die Asylzahlen steigen und das System gerät unter Druck.", "Wohnraum wird knapp, die Infrastruktur ist überlastet, die Kosten steigen.", "Wie viel verträgt die Schweiz noch?"], ["KRIMINALTOURISMUS", "Offene Grenzen haben Folgen.", "Kriminelle nutzen das System aus und verschwinden wieder.", "Polizei und Justiz geraten unter Druck.", "Sicherheit ist nicht mehr überall selbstverständlich."], ["FAMILIENNACHZUG & ANKÜNFTE", "Zuwanderung hört nicht auf. Sie wächst weiter.", "Der Familiennachzug treibt das Bevölkerungswachstum an.", "Schulen, Wohnraum und Gemeinden kommen an ihre Grenzen.", "Die Integration kommt nicht mehr nach."], ["SICHERHEITSRISIKEN", "Wenn Systeme überlastet sind, steigen die Risiken.", "Bedrohungen sind schwerer zu erkennen und zu verhindern.", "Schon seltene Fehler können schwere Folgen haben.", "Kontrolle ist entscheidend für Sicherheit."], ["BELASTUNG DES SOZIALSYSTEMS", "Wachstum hat seinen Preis.", "Immer mehr Menschen sind auf Sozialleistungen angewiesen.", "Arbeitslosenversicherung und Sozialstaat geraten unter Druck.", "Wer bezahlt am Ende?"]], "FR": [["PRESSION MIGRATOIRE", "La Suisse grandit. Trop vite.", "Les demandes d'asile augmentent et le système est sous pression.", "Le logement manque, les infrastructures sont saturées, les coûts explosent.", "Jusqu'où la Suisse peut-elle aller?"], ["TOURISME CRIMINEL", "Les frontières ouvertes ont des conséquences.", "Des criminels exploitent le système et repartent.", "La police et la justice sont sous pression.", "La sécurité n'est plus garantie partout."], ["REGROUPEMENT FAMILIAL & ARRIVÉES", "La migration ne s'arrête pas. Elle s'amplifie.", "Le regroupement familial alimente la croissance démographique.", "Les écoles, le logement et les communes atteignent leurs limites.", "L'intégration ne suit plus le rythme."], ["MENACES SÉCURITAIRES", "Lorsque les systèmes sont surchargés, les risques augmentent.", "Les menaces sont plus difficiles à détecter et à prévenir.", "Même des erreurs rares peuvent avoir de graves conséquences.", "Le contrôle est essentiel pour la sécurité."], ["PRESSION SUR LE SYSTÈME SOCIAL", "La croissance a un prix.", "De plus en plus de personnes dépendent du système social.", "L'assurance chômage et les aides sociales sont sous pression.", "Qui va payer?"]], "IT": [["PRESSIONE MIGRATORIA", "La Svizzera cresce. Troppo in fretta.", "Le domande d'asilo aumentano e il sistema è sotto pressione.", "Gli alloggi scarseggiano, le infrastrutture sono sovraccariche, i costi salgono.", "Quanto può ancora reggere la Svizzera?"], ["TURISMO CRIMINALE", "Le frontiere aperte hanno conseguenze.", "I criminali sfruttano il sistema e poi scompaiono.", "Polizia e giustizia sono sotto pressione.", "La sicurezza non è più garantita ovunque."], ["RICONGIUNGIMENTO FAMILIARE & ARRIVI", "La migrazione non si ferma. Si moltiplica.", "Il ricongiungimento familiare alimenta la crescita della popolazione.", "Scuole, alloggi e comuni raggiungono i loro limiti.", "L'integrazione non riesce più a stare al passo."], ["MINACCE ALLA SICUREZZA", "Quando i sistemi sono sotto pressione, i rischi aumentano.", "Le minacce sono più difficili da individuare e prevenire.", "Anche errori rari possono avere gravi conseguenze.", "Il controllo è fondamentale per la sicurezza."], ["PRESSIONE SUL SISTEMA SOCIALE", "La crescita ha un costo.", "Sempre più persone dipendono dal sistema sociale.", "Disoccupazione e assistenza sono sotto pressione.", "Chi pagherà il prezzo?"]]};
+const CTA_TEXT = {"EN": {"title": "That's why a YES vote for the initiative is needed.", "body": "Uncontrolled immigration is causing Switzerland to grow far too quickly. The negative consequences are noticeable in all areas of life. That's why we need a YES vote on the sustainability initiative.", "btn": "Take Action!", "play": "▶  PLAY AGAIN"}, "DE": {"title": "Darum braucht es ein JA zur Initiative", "body": "Durch die unkontrollierte Einwanderung wächst die Schweiz viel zu schnell. Die negativen Folgen sind in allen Lebensbereichen spürbar. Darum braucht es ein JA zur Nachhaltigkeits-Initiative.", "btn": "Jetzt handeln!", "play": "▶  NEU SPIELEN"}, "FR": {"title": "Pourquoi un OUI à l'initiative est nécessaire", "body": "En raison de l'immigration incontrôlée, la Suisse croît beaucoup trop vite. Les conséquences négatives se font sentir dans tous les domaines de la vie. C'est pourquoi l'initiative pour la durabilité est nécessaire.", "btn": "Agir maintenant!", "play": "▶  REJOUER"}, "IT": {"title": "Ecco perché è necessario votare SÌ all'iniziativa", "body": "A causa dell'immigrazione incontrollata, la Svizzera sta crescendo troppo rapidamente. Le conseguenze negative sono evidenti in tutti gli ambiti della vita. Ecco perché è necessario votare SÌ all'iniziativa sulla sostenibilità.", "btn": "Agisci ora!", "play": "▶  RIGIOCA"}};
+const TUTORIAL_I18N = {"DE": {"title": "WIE MAN SPIELT", "move": "BEWEGEN", "move_desc": "Pfeiltasten oder WASD", "block": "BLOCKIEREN", "block_desc": "Bewege dich vor einen Eindringling", "red_title": "✕ ROT — BLOCKIEREN", "red_desc": "Illegale Einwanderer — halte sie auf!", "green_title": "✓ GRÜN — DURCHLASSEN", "green_desc": "Qualifizierte Arbeitskräfte — lass sie durch!", "pop": "BEVÖLKERUNG", "pop_desc": "Jeder Eindringling erhöht die Bevölkerung um +50.000. Verhindere, dass die Schweiz 10 Millionen erreicht!", "btn": "▶  SPIELEN"}, "FR": {"title": "COMMENT JOUER", "move": "DÉPLACER", "move_desc": "Touches fléchées ou WASD", "block": "BLOQUER", "block_desc": "Placez-vous devant un intrus", "red_title": "✕ ROUGE — BLOQUER", "red_desc": "Immigrants illégaux — arrêtez-les!", "green_title": "✓ VERT — LAISSER PASSER", "green_desc": "Travailleurs qualifiés — laissez-les passer!", "pop": "POPULATION", "pop_desc": "Chaque intrus augmente la population de +50 000. Empêchez la Suisse d'atteindre 10 millions!", "btn": "▶  JOUER"}, "IT": {"title": "COME SI GIOCA", "move": "MUOVERSI", "move_desc": "Tasti freccia o WASD", "block": "BLOCCARE", "block_desc": "Posizionati davanti a un intruso", "red_title": "✕ ROSSO — BLOCCARE", "red_desc": "Immigrati illegali — fermali!", "green_title": "✓ VERDE — LASCIA PASSARE", "green_desc": "Lavoratori qualificati — lasciali passare!", "pop": "POPOLAZIONE", "pop_desc": "Ogni intruso aumenta la popolazione di +50.000. Impedisci alla Svizzera di raggiungere 10 milioni!", "btn": "▶  GIOCA"}, "EN": {"title": "HOW TO PLAY", "move": "MOVE", "move_desc": "Arrow keys or WASD", "block": "BLOCK", "block_desc": "Move in front of an intruder", "red_title": "✕ RED — BLOCK", "red_desc": "Illegal immigrants — stop them!", "green_title": "✓ GREEN — LET THROUGH", "green_desc": "Skilled workers — let them pass!", "pop": "POPULATION", "pop_desc": "Each intruder crossing raises population by +50,000. Stop Switzerland reaching 10 million!", "btn": "▶  PLAY"}};
+
+const CONTINUE_LABEL = {"EN": "▶  CONTINUE", "DE": "▶  WEITER", "FR": "▶  CONTINUER", "IT": "▶  CONTINUA"};
+
+function getLevel(wave) { return Math.min(5, Math.floor((wave - 1) / 2) + 1); }
+function isSurgeWave(wave) { return wave % 2 === 0; } // even waves = rush mode
+
+function waveCfg(wave) {
+  const rush = isSurgeWave(wave);  // rush = second wave of each level
+  const lvl  = getLevel(wave);
+  const baseCount = Math.min((6 + lvl * 3) * 2, 44);
+  return {
+    count:    rush ? baseCount * 2 : baseCount,  // rush = 2× enemies same behavior
+    speed:    0.55,                              // same speed always — AI handles per-level
+    interval: rush
+      ? Math.max(1200 - lvl * 80, 300)          // rush: slightly tighter spawns
+      : Math.max(2200 - lvl * 160, 600),
+    weaveAmp:  Math.min(lvl * 8, 50),           // minimal — AI overrides per level
+    weaveFreq: 0.008 + lvl * 0.002,
+    surge: rush,                                 // keep field name 'surge' for compat
+  };
+}
+
+// Build wave enemy list — exactly 1-in-10 are good (skilled)
+function buildWaveList(cfg) {
+  const list = [];
+  for (let i = 0; i < cfg.count; i++) {
+    list.push({ skilled: (i % 10 === 4) });
+  }
+  // Shuffle
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
+
+// ═══════════════════════════════════════════════════════
+//  START GAME
+// ═══════════════════════════════════════════════════════
+function startGame() {
+  openPanel = null;
+  gameState = 'playing';
+  clickZones = [];
+  document.getElementById('hud').classList.add('on');
+  updateMobileControls();
+  document.getElementById('popWrap').classList.add('on');
+  document.getElementById('dpad').classList.add('on');
+
+  const wc = waveCfg(1);
+  state = {
+    running:true, score:0, intercepted:0, wave:1, lives:3,
+    population:9100000, maxPop:10000000, basePop:9100000, popTarget:9100000, skilledCrossed:0,
+    isSurge: false,
+    combo:0, perfectWave:true,
+    waveList: buildWaveList(wc, false),
+    waveEnemiesLeft:wc.count, waveSpawnTimer:0,
+    waveCfg:wc, waveComplete:false, waveCooldown:0,
+  };
+
+  // Player sits just below the border line, centered
+  player = { x:W/2, y:BORDER_Y+28, w:60, h:90, frame:0, hitFlash:0 };
+  groupCounter = 0; spawnQueue = [];
+  if (state) state._laneBag = [];
+  enemies = []; particles = [];
+  // Clear any stale dev scores from localStorage
+  if (localStorage.getItem('sbScores')) {
+    try {
+      const s = JSON.parse(localStorage.getItem('sbScores'));
+      // Keep only entries that look like real submissions (have email field)
+      const clean = s.filter(e => e.email && e.email.length > 0);
+      localStorage.setItem('sbScores', JSON.stringify(clean));
+    } catch(e) { localStorage.removeItem('sbScores'); }
+  }
+  if (animFrame) cancelAnimationFrame(animFrame);
+  lastTime = 0;
+  // Show tutorial before level 1
+  if (state.wave === 1) showTutorial(); else showLevelCard('');
+  requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════════════════
+//  SPAWN ENEMY
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  AI SPAWN
+// ═══════════════════════════════════════════════════════
+let groupCounter = 0;
+let spawnQueue = [];
+
+function spawnEnemy(cfg) {
+  const lvl = getLevel(state.wave);
+  const def = state.waveList.pop() || { skilled: false };
+  // Wave 10: mix all enemy types
+  // Wave 10: random sprite AND random AI level per enemy
+  const isWave10 = state.wave === 10 && !def.skilled;
+  const spritePoolLvl = isWave10 ? Math.ceil(Math.random() * 5) : lvl;
+  const aiLvl = isWave10 ? Math.ceil(Math.random() * 5) : lvl;
+  const pool = LEVEL_SPRITES[spritePoolLvl] || LEVEL_SPRITES[1];
+  const spriteKey = pool[Math.floor(Math.random() * pool.length)];
+  const LANE_W = (W - 160) / 6;
+  // Shuffle-bag lane distributor — ensures even spread, no clustering
+  if (!state._laneBag || state._laneBag.length === 0) {
+    state._laneBag = [0,1,2,3,4,5].sort(() => Math.random() - 0.5);
+  }
+  const lane = state._laneBag.pop();
+  const _pb0 = pathBounds(H + 40);
+  const laneX = Math.max(_pb0.left + 10, Math.min(_pb0.right - 10,
+    80 + lane * LANE_W + LANE_W * 0.25 + Math.random() * LANE_W * 0.5
+  ));
+
+  // Compute path fraction at spawn so enemies scale with corridor as it narrows
+  const _spawnPb = pathBounds(H + 40);
+  const _pathFrac = Math.max(0.04, Math.min(0.96,
+    (laneX - _spawnPb.left) / (_spawnPb.right - _spawnPb.left)
+  ));
+
+  const base = {
+    x: laneX, y: H + 40,
+    startX: laneX, targetX: laneX,
+    _pathFraction: _pathFrac,
+    aiLevel: aiLvl,
+    w: 44, h: 80,
+    speed: cfg.speed * (0.85 + Math.random() * 0.3),
+    frame: Math.floor(Math.random() * 100),
+    skilled: def.skilled, passed: false, level: lvl, spriteKey, lane,
+    weaveAmp: 0, weaveFreq: 0.008, weavePhase: Math.random() * Math.PI * 2, weaveDir: 1,
+    pauseTimer: 0, pauseDelay: 9999,
+    sprintActive: false, sprintTriggerY: 0, sprintEnd: 0,
+    dirChanged: false, dirChangeTriggerY: 0,
+    hasSplit: false, splitTriggerY: 0, fanTargetX: laneX,
+    disguised: false, disguiseTimer: 0, truespriteKey: null,
+    hasPaused: false, pauseTriggerY: 0, pauseDuration: 0, dashTriggerY: 0,
+    altPath: false, altX: laneX,
+    coverTarget: null, seekCoverTimer: 0,
+    rerouteTimer: 0, rerouteInterval: 0,
+    hitFlash: 0, aiTimer: Math.floor(Math.random() * 60),
+    groupId: 0,
+  };
+
+  // ── Skilled workers: always use L1 calm behaviour regardless of level ──
+  if (def.skilled) {
+    base.speed *= 0.6;
+    base.weaveAmp = 10; base.weaveFreq = 0.007;
+    base.groupId = groupCounter;
+    // Assign a random SW sprite at spawn — stable for this enemy's lifetime
+    base.spriteKey = SKILLED_SPRITES[Math.floor(Math.random() * SKILLED_SPRITES.length)];
+    enemies.push(base);
+    return;
+  }
+
+  if (aiLvl === 1) {
+    base.speed *= 0.58;
+    base.weaveAmp = 8; base.weaveFreq = 0.007;
+    base.groupId = groupCounter;
+    if (Math.random() < 0.45) {
+      base.pauseDelay = Math.floor(Math.random() * 160) + 60;
+      base.pauseTimer = Math.floor(Math.random() * 50) + 20;
+    }
+    if ((state.waveList.length % 4) === 0) groupCounter++;
+
+  } else if (aiLvl === 2) {
+    // Moderate speed — sprint is the exciting moment, not the baseline
+    base.speed *= 0.75;
+    base.weaveAmp = 16; base.weaveFreq = 0.011;
+    base.weaveDir = Math.random() < 0.5 ? 1 : -1;
+    // Sprint burst: short, noticeable, but not instant-teleport fast
+    base.sprintTriggerY = H * 0.38 + Math.random() * H * 0.25;
+    base.sprintEnd = Math.floor(Math.random() * 40) + 25;
+    // Lane drift: ADJACENT lane only (max 1 lane away = no impossible reach)
+    const driftLane = Math.max(0, Math.min(5, lane + (Math.random() < 0.5 ? 1 : -1)));
+    base.driftTargetX = 80 + driftLane * LANE_W + LANE_W * 0.3 + Math.random() * LANE_W * 0.4;
+    base.driftTargetX = Math.max(80, Math.min(W - 80, base.driftTargetX));
+    base.dirChangeTriggerY = H * 0.50 + Math.random() * H * 0.2;
+    base.targetX = laneX; // starts at spawn
+
+  } else if (aiLvl === 3) {
+    // SLOW — families with luggage, true simultaneous cluster spawn
+    base.speed *= 0.42;
+    base.weaveAmp = 5; base.weaveFreq = 0.005;
+    base.weaveDir = Math.random() < 0.5 ? 1 : -1;
+    base.groupId = groupCounter;
+    // New cluster X every 5 enemies
+    if (!state._clusterX || state._clusterSize >= 5) {
+      state._clusterX    = 100 + Math.random() * (W - 200);
+      state._clusterSize = 0;
+      groupCounter++;
+    }
+    state._clusterSize = (state._clusterSize || 0) + 1;
+    const clusterX = state._clusterX;
+    // All members spawn at SAME x (±25px), SAME y — truly on top of each other
+    base.x      = clusterX + (Math.random() - 0.5) * 25;
+    base.startX = base.x;
+    base.targetX = base.x;
+    base.y = H + 30;  // all at same Y — group walks together
+    // Fan-out only when close to border
+    base.splitTriggerY = BORDER_Y + H * 0.22;
+    const fanSpread = (Math.random() - 0.5) * 160;
+    base.fanTargetX = Math.max(80, Math.min(W - 80, clusterX + fanSpread));
+
+  } else if (aiLvl === 4) {
+    base.speed *= 0.70;
+    base.weaveAmp = 10; base.weaveFreq = 0.006;
+    base.weaveDir = Math.random() < 0.5 ? 1 : -1;
+    if (Math.random() < 0.5) {
+      base.disguised = true;
+      base.truespriteKey = spriteKey;
+      // Use a random SW sprite as disguise
+      base.spriteKey = SKILLED_SPRITES[Math.floor(Math.random() * SKILLED_SPRITES.length)];
+      base.disguiseTimer = (H - BORDER_Y) * (0.30 + Math.random() * 0.20);
+    }
+    base.pauseTriggerY = BORDER_Y + H * 0.18 + Math.random() * H * 0.09;
+    base.pauseDuration = Math.floor(Math.random() * 40) + 20;
+    base.dashTriggerY  = BORDER_Y + 65 + Math.random() * 30;
+    if (Math.random() < 0.3) {
+      base.altPath = true;
+      const altLane = (lane + 2 + Math.floor(Math.random() * 2)) % 6;
+      base.altX = 80 + altLane * LANE_W + LANE_W * 0.4;
+      base.altX = Math.max(60, Math.min(W - 60, base.altX));
+    }
+
+  } else if (aiLvl === 5) {
+    const walkSpeed   = cfg.speed * 0.30;
+    const sprintSpeed = cfg.speed * 1.10;
+    base.speed       = walkSpeed;
+    base.sprintSpeed = sprintSpeed;
+    base.sprintTriggerY = BORDER_Y + (H - BORDER_Y) * 0.50;
+    base.hasSprinted = false;
+    base.weaveAmp = 6; base.weaveFreq = 0.006;
+    base.weaveDir = Math.random() < 0.5 ? 1 : -1;
+    base.rerouteTimer    = 999;
+    base.rerouteInterval = 999;
+    base.seekCoverTimer  = Math.floor(Math.random() * 60) + 30;
+    // Spread across full path width at spawn (y = H+40)
+    const pb5 = pathBounds(H + 40);
+    const pathW5 = pb5.right - pb5.left;
+    const spread5 = (state.waveCfg.count - state.waveEnemiesLeft) % 7;
+    const laneX5  = pb5.left + (spread5 + 0.5) / 7 * pathW5 + (Math.random() - 0.5) * 40;
+    base.targetX = Math.max(pb5.left + 20, Math.min(pb5.right - 20, laneX5));
+    base.startX  = base.targetX;
+    base.x       = base.targetX;
+    // Override _pathFraction to match actual spawn position
+    base._pathFraction = Math.max(0.04, Math.min(0.96,
+      (base.x - pb5.left) / pathW5
+    ));
+  }
+  enemies.push(base);
+}
+
+
+//  COLLISION
+// ═══════════════════════════════════════════════════════
+function overlap(a, b, slack=0.72) {
+  const aw=a.w*slack/2, ah=a.h*slack/2, bw=b.w*slack/2, bh=b.h*slack/2;
+  return !(a.x+aw<b.x-bw || a.x-aw>b.x+bw || a.y+ah<b.y-bh || a.y-ah>b.y+bh);
+}
+
+function updateHUD() {
+  const scoreEl = document.getElementById('sScore');
+  if (scoreEl.textContent !== String(state.score)) {
+    scoreEl.textContent = state.score;
+    scoreEl.classList.remove('pop'); void scoreEl.offsetWidth;
+    scoreEl.classList.add('pop');
+  }
+  document.getElementById('sInt').textContent   = state.intercepted;
+  updateComboHUD();
+  document.getElementById('sWave').textContent  = 'LVL ' + getLevel(state.wave);
+  // Hearts: still show for UX feedback even without lives mechanic
+  const h = Math.max(0, state.lives);
+  document.getElementById('sHearts').textContent = '♥ '.repeat(h).trim() + (h < 3 ? ' ♡ '.repeat(3-h).trim() : '');
+  const pop = Math.round(state.population);
+  const pct = Math.min(1, (pop - state.basePop) / (state.maxPop - state.basePop));
+  document.getElementById('popFill').style.width = (pct * 100) + '%';
+  const popNumEl = document.getElementById('popNum');
+  const popColor = pct > 0.85 ? '#ef4444' : pct > 0.6 ? '#f59e0b' : '#fff';
+  popNumEl.innerHTML =
+    `<strong style="color:${popColor}">${pop.toLocaleString()}</strong>`
+    + ` <span style="color:#444">/ <strong style="color:#D52B1E">10,000,000</strong></span>`;
+  popNumEl.classList.toggle('danger', pct > 0.85);
+  // Also update label language
+  const labelEl = document.getElementById('popLabel');
+  if (labelEl) {
+    const popLabels = { DE:'BEVÖLKERUNG', FR:'POPULATION', IT:'POPOLAZIONE', EN:'POPULATION' };
+    const cross = labelEl.querySelector('.swiss-cross');
+    labelEl.textContent = popLabels[lang] || 'BEVÖLKERUNG';
+    if (cross) labelEl.prepend(cross);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  WAVE FLASH
+// ═══════════════════════════════════════════════════════
+function flashWave(text, isLevelStart) {
+  if (isLevelStart) {
+    showLevelCard(text);
+  } else {
+    const el = document.getElementById('waveFlash');
+    el.textContent = text; el.style.display = 'block';
+    el.style.animation = 'none'; void el.offsetWidth;
+    el.style.animation = 'waveIn 1.5s ease forwards';
+    setTimeout(() => el.style.display = 'none', 1500);
+  }
+}
+
+function showTutorial() {
+  state.running = false;
+  gameState = 'tutorial';
+  updateMobileControls();
+  const ti = TUTORIAL_I18N[lang] || TUTORIAL_I18N.DE;
+  const isMob = typeof isMobile === 'function' && isMobile();
+
+  let card = document.getElementById('tutorialCard');
+  if (!card) {
+    card = document.createElement('div');
+    card.id = 'tutorialCard';
+    card.style.cssText = `
+      position:absolute; inset:0; z-index:210;
+      background:rgba(0,0,0,0.92);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      font-family:'Courier New',monospace;
+      padding:20px;
+    `;
+    document.getElementById('gameWrap').appendChild(card);
+  }
+
+  const moveIcon = isMob
+    ? '<span style="font-size:1.5rem">🕹️</span>'
+    : '<span style="font-size:1.1rem;letter-spacing:2px">&#8592; &#8593; &#8595; &#8594;<br><small style="font-size:.68rem;color:#888">WASD</small></span>';
+
+  card.innerHTML = `
+    <div style="color:#D52B1E;font-size:clamp(10px,1.4vw,13px);letter-spacing:.3em;text-transform:uppercase;margin-bottom:10px;">
+      ${ti.title}
+    </div>
+    <div style="width:50px;height:2px;background:#D52B1E;margin:0 auto 20px;border-radius:2px;"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;width:min(560px,92vw);margin-bottom:18px;">
+
+      <!-- Move -->
+      <div style="background:#111;border:1px solid #222;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;text-align:center;flex-shrink:0;">${moveIcon}</div>
+        <div>
+          <div style="color:#D52B1E;font-size:.68rem;letter-spacing:.12em;font-weight:bold;margin-bottom:3px;">${ti.move}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:.65rem;line-height:1.4;">${ti.move_desc}</div>
+        </div>
+      </div>
+
+      <!-- Block -->
+      <div style="background:#111;border:1px solid #222;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;text-align:center;flex-shrink:0;font-size:1.6rem;">🛡</div>
+        <div>
+          <div style="color:#D52B1E;font-size:.68rem;letter-spacing:.12em;font-weight:bold;margin-bottom:3px;">${ti.block}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:.65rem;line-height:1.4;">${ti.block_desc}</div>
+        </div>
+      </div>
+
+      <!-- Red -->
+      <div style="background:#1a0a0a;border:1px solid #7f1d1d;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:#ef4444;border:3px solid #b91c1c;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;font-weight:bold;color:#fff;">✕</div>
+        <div>
+          <div style="color:#ef4444;font-size:.68rem;letter-spacing:.1em;font-weight:bold;margin-bottom:3px;">${ti.red_title}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:.65rem;line-height:1.4;">${ti.red_desc}</div>
+        </div>
+      </div>
+
+      <!-- Green -->
+      <div style="background:#0a1a0a;border:1px solid #14532d;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:#22c55e;border:3px solid #15803d;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;font-weight:bold;color:#fff;">✓</div>
+        <div>
+          <div style="color:#22c55e;font-size:.68rem;letter-spacing:.1em;font-weight:bold;margin-bottom:3px;">${ti.green_title}</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:.65rem;line-height:1.4;">${ti.green_desc}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Population bar -->
+    <div style="background:#111;border:1px solid #333;border-radius:10px;padding:12px 16px;width:min(560px,92vw);margin-bottom:22px;display:flex;align-items:center;gap:14px;">
+      <div style="font-size:1.6rem;flex-shrink:0;">🇨🇭</div>
+      <div>
+        <div style="color:#f59e0b;font-size:.68rem;letter-spacing:.12em;font-weight:bold;margin-bottom:3px;">${ti.pop}</div>
+        <div style="color:rgba(255,255,255,0.6);font-size:.65rem;line-height:1.4;">${ti.pop_desc}</div>
+      </div>
+    </div>
+
+    <button id="tutorialStartBtn" style="
+      background:#D52B1E; color:#fff; border:2px solid #fff;
+      font:bold clamp(11px,1.4vw,14px) 'Courier New',monospace;
+      letter-spacing:.14em; padding:13px 44px; border-radius:6px;
+      cursor:pointer; text-transform:uppercase;
+    ">${ti.btn}</button>
+  `;
+
+  card.style.display = 'flex';
+
+  document.getElementById('tutorialStartBtn').onclick = () => {
+    card.style.display = 'none';
+    gameState = 'levelcard';
+    updateMobileControls();
+    showLevelCard('');
+  };
+}
+
+function showLevelCard(text) {
+  state.running = false;
+  gameState = 'levelcard';
+  AMBIENT.pause();
+  updateMobileControls();
+  let card = document.getElementById('levelCard');
+  if (!card) {
+    card = document.createElement('div');
+    card.id = 'levelCard';
+    card.style.cssText = `
+      position:absolute; inset:0; z-index:200;
+      background:rgba(0,0,0,0.88);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      font-family:'Courier New',monospace;
+      padding:24px;
+    `;
+    document.getElementById('gameWrap').appendChild(card);
+  }
+  const lvl = getLevel(state.wave);
+  const splash = (LEVEL_SPLASH[lang] || LEVEL_SPLASH.EN)[lvl - 1] || [];
+  const [splashTitle, ...splashLines] = splash;
+  const contLabel = CONTINUE_LABEL[lang] || CONTINUE_LABEL.EN;
+  const linesHtml = splashLines.map(l =>
+    `<div style="color:rgba(255,255,255,0.82);font-size:clamp(12px,1.4vw,16px);line-height:1.7;text-align:center;max-width:600px;">${l}</div>`
+  ).join('');
+  card.innerHTML = `
+    <div style="color:#D52B1E;font-size:clamp(10px,1.4vw,14px);letter-spacing:.25em;text-transform:uppercase;margin-bottom:10px;">Level ${lvl} of 5</div>
+    <div style="color:#fff;font-size:clamp(18px,3vw,36px);font-weight:900;letter-spacing:.06em;text-align:center;text-shadow:0 0 30px rgba(213,43,30,.7),2px 2px 0 #000;margin-bottom:16px;">${splashTitle || ''}</div>
+    <div style="width:60px;height:3px;background:#D52B1E;margin:0 auto 20px;border-radius:2px;"></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:28px;">${linesHtml}</div>
+    <button id="levelContinueBtn" style="
+      background:#D52B1E; color:#fff; border:2px solid #fff;
+      font:bold clamp(11px,1.4vw,14px) 'Courier New',monospace;
+      letter-spacing:.12em; padding:12px 36px; border-radius:6px;
+      cursor:pointer; text-transform:uppercase;
+      transition:transform .1s,background .1s;
+    ">${contLabel}</button>
+  `;
+  card.style.display = 'flex';
+  document.getElementById('levelContinueBtn').onclick = () => {
+    card.style.display = 'none';
+    state.running = true;
+    gameState = 'playing';
+    updateMobileControls();
+    AMBIENT.start();
+
+    requestAnimationFrame(ts => { lastTime = ts; gameLoop(ts); });
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+//  GAME LOOP
+// ═══════════════════════════════════════════════════════
+function gameLoop(ts=0) {
+  animFrame = requestAnimationFrame(gameLoop);
+  if (gameState !== 'playing' || !state.running) return;
+  const dt = Math.min(ts - lastTime, 50); lastTime = ts;
+
+  // Move player (left/right along border, small vertical range)
+  if (keys['ArrowLeft']  || keys['a'] || keys['A']) player.x -= GUARD_SPEED;
+  if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += GUARD_SPEED;
+  if (keys['ArrowUp']    || keys['w'] || keys['W']) player.y -= GUARD_SPEED * 0.6;
+  if (keys['ArrowDown']  || keys['s'] || keys['S']) player.y += GUARD_SPEED * 0.6;
+  { const ppb = pathBounds(player.y); player.x = Math.max(ppb.left + 8, Math.min(ppb.right - 8, player.x)); }
+  player.y = Math.max(BORDER_Y - 20, Math.min(BORDER_Y + 60, player.y));
+  player.frame++;
+  if (player.hitFlash > 0 && player.frame % 2 === 0) player.hitFlash--;
+
+  // Wave spawning
+  if (!state.waveComplete) {
+    state.waveSpawnTimer += dt;
+    if (state.waveSpawnTimer >= state.waveCfg.interval && state.waveEnemiesLeft > 0) {
+      const spawnLvl = getLevel(state.wave);
+      if (spawnLvl === 3) {
+        // Batch-spawn a whole cluster (4-5 enemies) at once, same position
+        const clusterSize = Math.min(5, state.waveEnemiesLeft);
+        for (let ci = 0; ci < clusterSize; ci++) {
+          if (state.waveEnemiesLeft > 0) {
+            spawnEnemy(state.waveCfg);
+            state.waveEnemiesLeft--;
+          }
+        }
+        // Force a new cluster next batch by resetting cluster state
+        state._clusterX = null;
+        state._clusterSize = 0;
+      } else {
+        spawnEnemy(state.waveCfg);
+        state.waveEnemiesLeft--;
+      }
+      state.waveSpawnTimer = 0;
+    }
+    if (state.waveEnemiesLeft === 0 && enemies.length === 0 && state.wave < 10) {
+      state.waveComplete = true; state.waveCooldown = 130;
+      // Perfect wave bonus
+      if (state.perfectWave) {
+        state.score += 500;
+        spawnFloat(W/2, H/2, '⭐ PERFECT WAVE +500', '#facc15', 22);
+      }
+      state.perfectWave = true; // reset for next wave
+      flashWave('LEVEL ' + getLevel(state.wave) + ' CLEARED!'); SFX.levelClear();
+    }
+  } else {
+    if (--state.waveCooldown <= 0) {
+      // No win condition — game continues until population limit is reached
+      state.wave++;
+      const wc = waveCfg(state.wave);
+      const surge = isSurgeWave(state.wave);
+      Object.assign(state, {
+        waveCfg: wc,
+        isSurge: surge,
+        combo: state.combo, // carry combo across waves
+        waveList: buildWaveList(wc),
+        waveEnemiesLeft: wc.count,
+        waveSpawnTimer: 0,
+        waveComplete: false,
+      });
+      const lvl = getLevel(state.wave);
+      const lvlName = LEVEL_NAMES[lvl - 1];
+      const isNewLevel = getLevel(state.wave) !== getLevel(state.wave - 1);
+      const isRush     = isSurgeWave(state.wave);
+      if (isNewLevel) {
+        flashWave('LEVEL ' + lvl + ': ' + lvlName, true);
+        SFX.levelStart();
+      } else if (isRush) {
+        flashWave('⚡ RUSH MODE ⚡', false);
+        SFX.rushMode();
+      }
+      // Final wave (wave 10): unlimited enemies, all types, no end
+      if (state.wave === 10) {
+        state.waveEnemiesLeft = 9999;
+        state.waveCfg.interval = 400; // rapid spawn
+      }
+    }
+  }
+
+  // ── Enemy AI update ────────────────────────────────────
+  for (let i = enemies.length-1; i >= 0; i--) {
+    const e = enemies[i];
+    e.frame++; e.aiTimer++;
+    const lvl = e.level;
+    let moveSpeed = e.speed;
+    let moveY = true;
+
+    // ── Skilled workers: always calm L1 movement at every level ──
+    if (e.skilled) {
+      if (e.pauseDelay > 0) { e.pauseDelay--; }
+      else if (e.pauseTimer > 0) { e.pauseTimer--; moveY = false; }
+      e.x += (e.startX - e.x) * 0.015;
+      e.x += Math.sin(e.weavePhase + e.frame * 0.007) * 0.4;
+      e.x = clampToPath(e.x, e.y);
+
+    } else if (e.aiLevel === 1) {
+      // ── L1: Slow group walk, luggage pauses ──
+      if (e.pauseDelay > 0) { e.pauseDelay--; }
+      else if (e.pauseTimer > 0) { e.pauseTimer--; moveY = false; }
+      e.x += (e.startX - e.x) * 0.02;
+      e.x += Math.sin(e.weavePhase + e.frame * e.weaveFreq) * 0.4;
+      e.x = clampToPath(e.x, e.y);
+
+    } else if (e.aiLevel === 2) {
+      // ── L2: Moderate speed, sprint burst, adjacent lane drift only ──
+      if (!e.sprintActive && e.y <= e.sprintTriggerY) {
+        e.sprintActive = true;
+        e.sprintEnd = e.frame + e.sprintEnd;
+      }
+      if (e.sprintActive) {
+        moveSpeed = (e.frame < e.sprintEnd) ? moveSpeed * 1.7 : e.speed;
+        if (e.frame >= e.sprintEnd) e.sprintActive = false;
+      }
+      // Smooth drift to adjacent lane only (capped so player can react)
+      if (!e.dirChanged && e.y <= e.dirChangeTriggerY) {
+        e.dirChanged = true;
+        e.targetX = e.driftTargetX;
+      }
+      e.x += (e.targetX - e.x) * 0.025; // slow lerp = smooth, catchable
+      e.x += e.weaveDir * Math.sin(e.weavePhase + e.frame * e.weaveFreq) * 2.5;
+      e.x = clampToPath(e.x, e.y);
+
+    } else if (e.aiLevel === 3) {
+      // ── L3: Family clusters — very slow, tight together, fan near border ──
+      if (!e.hasSplit && e.y <= e.splitTriggerY) {
+        e.hasSplit = true;
+        e.targetX = e.fanTargetX;
+      }
+      // Pre-split: stay clustered (very small drift)
+      // Post-split: spread out slowly
+      const lerpRate = e.hasSplit ? 0.018 : 0.030;
+      e.x += (e.targetX - e.x) * lerpRate;
+      e.x += Math.sin(e.weavePhase + e.frame * e.weaveFreq) * (e.hasSplit ? 1.5 : 0.8);
+      e.x = clampToPath(e.x, e.y);
+
+    } else if (e.aiLevel === 4) {
+      // ── L4: Disguise reveal, pause, controlled dash ──
+      if (e.disguised && e.disguiseTimer > 0) {
+        e.disguiseTimer -= e.speed;
+        if (e.disguiseTimer <= 0) {
+          e.disguised = false;
+          e.spriteKey = e.truespriteKey;
+          e.hitFlash = 35;
+        }
+      }
+      if (e.altPath) {
+        e.targetX += (e.altX - e.targetX) * 0.022;
+      }
+      e.x += (e.targetX - e.x) * 0.035;
+      e.x += e.weaveDir * Math.sin(e.weavePhase + e.frame * e.weaveFreq) * 1.5;
+      e.x = clampToPath(e.x, e.y);
+      if (!e.hasPaused && e.y <= e.pauseTriggerY) {
+        e.hasPaused = true; e.pauseTimer = e.pauseDuration;
+      }
+      if (e.pauseTimer > 0) { e.pauseTimer--; moveY = false; }
+      else if (e.hasPaused && e.y <= e.dashTriggerY) { moveSpeed *= 2.0; }
+
+    } else if (e.aiLevel === 5) {
+      // ── L5: Slow walk → midpoint sprint ──
+      if (!e.hasSprinted && e.y <= e.sprintTriggerY) {
+        e.hasSprinted = true;
+        e.speed = e.sprintSpeed;
+        const pdx = e.x - player.x;
+        if (Math.abs(pdx) < 100) {
+          const evadeDir = pdx >= 0 ? 1 : -1;
+          const pb = pathBounds(e.y);
+          e._pathFraction = Math.max(0.05, Math.min(0.95,
+            e._pathFraction + evadeDir * 0.12
+          ));
+        }
+      }
+
+      // Key fix: map spawn-time lane fraction onto CURRENT path width
+      // so enemies stay spread across the full corridor as it narrows
+      if (!e._pathFraction) {
+        const spawnPb = pathBounds(H + 40);
+        e._pathFraction = Math.max(0.05, Math.min(0.95,
+          (e.x - spawnPb.left) / (spawnPb.right - spawnPb.left)
+        ));
+      }
+      const epb = pathBounds(e.y);
+      const corridorTarget = epb.left + e._pathFraction * (epb.right - epb.left);
+
+      if (!e.hasSprinted) {
+        // Walk phase
+        e.seekCoverTimer--;
+        if (e.seekCoverTimer <= 0) {
+          e.seekCoverTimer = 100;
+          let best = null, bestDist = 200;
+          for (const other of enemies) {
+            if (other === e || !other.skilled) continue;
+            const d = Math.abs(other.x - e.x) + Math.abs(other.y - e.y);
+            if (d < bestDist) { best = other; bestDist = d; }
+          }
+          e.coverTarget = best;
+        }
+        const walkTarget = (e.coverTarget && !e.coverTarget.passed)
+          ? Math.max(epb.left + 20, Math.min(epb.right - 20,
+              e.coverTarget.x + ((e.coverTarget.x > W/2) ? -38 : 38)))
+          : corridorTarget;
+        e.x += (walkTarget - e.x) * 0.012;
+        e.x += e.weaveDir * Math.sin(e.weavePhase + e.frame * e.weaveFreq) * 0.8;
+      } else {
+        // Sprint phase
+        e.x += (corridorTarget - e.x) * 0.06;
+        e.x += e.weaveDir * Math.sin(e.weavePhase + e.frame * e.weaveFreq) * 0.5;
+      }
+      // Maintain _pathFraction so clusters don't all funnel left
+      if (!e.hasSplit) {
+        const pb = pathBounds(e.y);
+        const corrTarget = pb.left + e._pathFraction * (pb.right - pb.left);
+        e.x += (corrTarget - e.x) * 0.015;
+      }
+      e.x = clampToPath(e.x, e.y);
+    }
+    if (e.hitFlash > 0) e.hitFlash--;
+    if (moveY) e.y -= moveSpeed;
+
+
+
+    // ── Collision with player ──
+    if (overlap({ x:player.x, y:player.y, w:player.w, h:player.h },
+                { x:e.x, y:e.y, w:e.w, h:e.h })) {
+      // L4 disguised enemy: treat as skilled until revealed
+      const appearsSkilled1 = e.skilled || e.disguised;
+      if (!appearsSkilled1) {
+        addCombo();
+        const mult = getComboMult();
+        const rushBonus = state.isSurge ? 1.5 : 1.0;
+        const basePts = 100 + state.wave * 10;
+        const pts = Math.round(basePts * mult * rushBonus);
+        spawnParticles(e.x, e.y, '#f97316', 14);
+        const multStr = (mult > 1 || rushBonus > 1) ? ` ×${(mult*rushBonus).toFixed(1)}` : '';
+        spawnFloat(e.x, e.y - 20, '+' + pts + ' 🛡' + multStr, '#f97316', 18);
+        state.score += pts;
+        state.intercepted++;
+        player.hitFlash = 28;
+        SFX.block();
+      } else {
+        breakCombo('wrong block');
+        spawnParticles(e.x, e.y, '#ef4444', 10);
+        spawnFloat(e.x, e.y - 20, '-150 ⚠', '#ef4444', 18);
+        state.score = Math.max(0, state.score - 150);
+        player.hitFlash = 28;
+        SFX.wrongBlock();
+      }
+      enemies.splice(i,1); continue;
+    }
+
+    // ── Enemy crosses border ──
+    if (e.y < BORDER_Y - 20 && !e.passed) {
+      e.passed = true;
+      enemies.splice(i, 1);
+      const appearsSkilled2 = e.skilled || e.disguised;
+      if (!appearsSkilled2) {
+        breakCombo('enemy crossed');
+        spawnParticles(e.x, BORDER_Y, '#ef4444', 12);
+        spawnFloat(e.x, BORDER_Y - 10, '+25,000 👥', '#ef4444', 18);
+        spawnFloat(e.x, BORDER_Y - 46, '-200 💀', '#ef4444', 18);
+        state.score = Math.max(0, state.score - 200);
+        state.popTarget = Math.min(state.maxPop, state.popTarget + 25000);
+        SFX.enemyCross();
+        if (state.popTarget >= state.maxPop) { updateHUD(); endGame(false); return; }
+      } else {
+        const bonusPts = 200 + state.wave * 25;
+        spawnParticles(e.x, BORDER_Y, '#22c55e', 10);
+        spawnFloat(e.x, BORDER_Y - 10, '-10,000 ✓', '#22c55e', 18);
+        spawnFloat(e.x, BORDER_Y - 52, '+' + bonusPts + ' BONUS! 🌟', '#facc15', 24);
+        state.popTarget = Math.max(state.basePop, state.popTarget - 10000);
+        if (e.skilled) { state.score += bonusPts; state.skilledCrossed++; SFX.skilledCross(); }
+      }
+    }
+  }
+
+  tickParticles();
+  tickFloats();
+
+  // Smooth population counter — interpolates toward popTarget in both directions
+  if (state.population !== state.popTarget) {
+    const diff = state.popTarget - state.population;
+    const step = Math.sign(diff) * Math.max(200, Math.abs(diff) * 0.045);
+    state.population = Math.abs(diff) < 200
+      ? state.popTarget
+      : state.population + step;
+  }
+
+  // Draw frame
+  ctx.clearRect(0, 0, W, H);
+  drawLevelBg();
+
+  // Draw order by Y position for correct depth:
+  // Enemies further down screen (higher Y) drawn last = in front
+  // Player drawn between enemies above and below them
+  const enemiesAbove = enemies.filter(e => e.y >= player.y);
+  const enemiesBelow = enemies.filter(e => e.y <  player.y);
+
+  // Enemies above player (further away) — drawn first (behind player)
+  for (const e of enemiesBelow) drawCrosser(e.x, e.y, 90, e.frame, e.skilled, e.level, e.spriteKey, e);
+
+  // Player
+  drawPlayer(player.x, player.y, 120, player.hitFlash);
+
+  // Enemies below player (closer to camera) — drawn after (in front of player)
+  for (const e of enemiesAbove) drawCrosser(e.x, e.y, 90, e.frame, e.skilled, e.level, e.spriteKey, e);
+
+  drawParticles();
+  drawFloats();
+
+  // Surge wave pulsing red border overlay
+  if (state.isSurge) {
+    const pulse = 0.12 + 0.08 * Math.sin(Date.now() * 0.006);
+    ctx.strokeStyle = `rgba(239,68,68,${pulse * 3})`;
+    ctx.lineWidth = 12;
+    ctx.strokeRect(6, 6, W-12, H-12);
+    ctx.font = 'bold 11px "Courier New",monospace';
+    ctx.fillStyle = `rgba(239,68,68,${0.6 + 0.4 * Math.sin(Date.now() * 0.008)})`;
+    ctx.textAlign = 'right';
+    ctx.fillText('⚡ RUSH MODE ⚡', W - 10, H - 10);
+  }
+
+  updateHUD();
+}
+
+function endGame(win) {
+  state.running = false; gameState = 'over';
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  AMBIENT.stop();
+  SFX.gameOver();
+  updateMobileControls();
+  explodeScreen(() => showEndOverlay());
+}
+
+function explodeScreen(cb) {
+  const cx = W / 2, cy = H / 2;
+
+  // ── Swiss flag shards ─────────────────────────────────────────────
+  // Draw the flag to an offscreen canvas then shatter it into triangular shards
+  const flagSize = 180;
+  const shards = [];
+
+  // Build flag geometry shards (triangles radiating from center)
+  const SHARD_COUNT = 48;
+  for (let i = 0; i < SHARD_COUNT; i++) {
+    const a1 = (i / SHARD_COUNT) * Math.PI * 2;
+    const a2 = ((i + 1) / SHARD_COUNT) * Math.PI * 2;
+    const am = (a1 + a2) / 2;
+    const r  = flagSize * (0.6 + Math.random() * 0.6);
+    const speed = 3 + Math.random() * 9;
+
+    // Determine colour from flag geometry
+    // Swiss flag: red square with white cross (cross arms are flagSize*0.2 wide, flagSize*0.6 tall/wide)
+    const px = Math.cos(am) * flagSize * 0.4;
+    const py = Math.sin(am) * flagSize * 0.4;
+    const inCrossV = Math.abs(px) < flagSize * 0.12 && Math.abs(py) < flagSize * 0.28;
+    const inCrossH = Math.abs(px) < flagSize * 0.28 && Math.abs(py) < flagSize * 0.12;
+    const inCross  = inCrossV || inCrossH;
+    const inFlag   = Math.abs(px) < flagSize * 0.42 && Math.abs(py) < flagSize * 0.42;
+
+    shards.push({
+      // Triangle vertices in screen space
+      ox: cx, oy: cy,
+      ax: cx + Math.cos(a1) * r * 0.15, ay: cy + Math.sin(a1) * r * 0.15,
+      bx: cx + Math.cos(a2) * r * 0.15, by: cy + Math.sin(a2) * r * 0.15,
+      // Physics
+      vx: Math.cos(am) * speed + (Math.random()-0.5) * 3,
+      vy: Math.sin(am) * speed - Math.random() * 4,
+      va: (Math.random()-0.5) * 0.25,
+      angle: 0,
+      gravity: 0.18 + Math.random() * 0.12,
+      r: r,
+      color: inCross ? '#fff' : (inFlag ? '#D52B1E' : '#D52B1E'),
+      life: 1.0,
+      decay: 0.003 + Math.random() * 0.004,
+    });
+  }
+
+  // ── Debris particles ─────────────────────────────────────────────
+  const debris = [];
+  for (let i = 0; i < 220; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 12;
+    const fromFlag = Math.random() < 0.7;
+    debris.push({
+      x: cx + (Math.random()-0.5) * flagSize,
+      y: cy + (Math.random()-0.5) * flagSize,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - Math.random() * 3,
+      r: 1.5 + Math.random() * 6,
+      color: fromFlag
+        ? (Math.random() < 0.4 ? '#fff' : '#D52B1E')
+        : ['#ff4444','#f97316','#fbbf24','#ff8800'][Math.floor(Math.random()*4)],
+      life: 1.0,
+      decay: 0.003 + Math.random() * 0.006,
+      gravity: 0.12 + Math.random() * 0.1,
+    });
+  }
+
+  // ── Shockwave rings ──────────────────────────────────────────────
+  const rings = [
+    { r: 0, maxR: W * 0.8, speed: 18, alpha: 0.9, delay: 0 },
+    { r: 0, maxR: W * 0.6, speed: 12, alpha: 0.6, delay: 6 },
+    { r: 0, maxR: W * 0.4, speed: 9,  alpha: 0.4, delay: 12 },
+  ];
+
+  let flashAlpha = 1.0;
+  let whiteAlpha = 0.8;
+  let frame = 0;
+  const DURATION = 300; // ~5 seconds at 60fps
+
+  function tick() {
+    frame++;
+
+    // ── Background darkens ──
+    ctx.fillStyle = `rgba(0,0,0,${Math.min(0.85, frame * 0.03)})`;
+    ctx.fillRect(0, 0, W, H);
+
+    // ── White flash burst ──
+    if (whiteAlpha > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${whiteAlpha})`;
+      ctx.fillRect(0, 0, W, H);
+      whiteAlpha -= 0.14;
+    }
+
+    // ── Red flash ──
+    if (flashAlpha > 0) {
+      ctx.fillStyle = `rgba(213,43,30,${flashAlpha * 0.7})`;
+      ctx.fillRect(0, 0, W, H);
+      flashAlpha -= 0.09;
+    }
+
+    // ── Shockwave rings ──
+    for (const ring of rings) {
+      if (frame < ring.delay) continue;
+      ring.r += ring.speed;
+      if (ring.r < ring.maxR) {
+        const ringAlpha = ring.alpha * (1 - ring.r / ring.maxR);
+        ctx.globalAlpha = ringAlpha;
+        ctx.strokeStyle = '#D52B1E';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+        ctx.stroke();
+        // White inner ring
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, ring.r * 0.9, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+
+    // ── Flag shards ──
+    for (const s of shards) {
+      if (s.life <= 0) continue;
+      s.ax += s.vx; s.ay += s.vy;
+      s.bx += s.vx; s.by += s.vy;
+      s.ox += s.vx; s.oy += s.vy;
+      s.vy += s.gravity;
+      s.angle += s.va;
+      s.life -= s.decay;
+
+      ctx.globalAlpha = Math.max(0, s.life);
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.moveTo(s.ox, s.oy);
+      ctx.lineTo(s.ax, s.ay);
+      ctx.lineTo(s.bx, s.by);
+      ctx.closePath();
+      ctx.fill();
+      // Bright edge
+      ctx.globalAlpha = Math.max(0, s.life * 0.4);
+      ctx.strokeStyle = s.color === '#fff' ? '#D52B1E' : '#fff';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+
+    // ── Debris particles ──
+    for (const p of debris) {
+      if (p.life <= 0) continue;
+      p.x += p.vx; p.y += p.vy;
+      p.vy += p.gravity;
+      p.vx *= 0.99;
+      p.life -= p.decay;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // ── GAME OVER text fades in ──
+    if (frame > 20) {
+      const textAlpha = Math.min(1, (frame - 20) / 20);
+      // Shadow/glow
+      ctx.globalAlpha = textAlpha * 0.7;
+      ctx.font = 'bold 72px "Courier New",monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#D52B1E';
+      for (let g = 0; g < 3; g++) {
+        ctx.globalAlpha = textAlpha * (0.3 - g * 0.08);
+        ctx.fillText('GAME OVER', cx, cy - 4 + g * 3);
+      }
+      // Drop shadow
+      ctx.globalAlpha = textAlpha * 0.9;
+      ctx.fillStyle = '#000';
+      ctx.fillText('GAME OVER', cx + 4, cy + 4);
+      // Main text
+      ctx.globalAlpha = textAlpha;
+      ctx.fillStyle = '#fff';
+      ctx.fillText('GAME OVER', cx, cy);
+      ctx.globalAlpha = 1;
+    }
+
+    if (frame < DURATION) {
+      requestAnimationFrame(tick);
+    } else {
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+      cb();
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+// ═══════════════════════════════════════════════════════
+//  LEAD GEN FORM + SCOREBOARD
+// ═══════════════════════════════════════════════════════
+const FORM_I18N = {
+  EN: {
+    title: '🇨🇭 Border Overwhelmed',
+    sub: 'Enter your details to save your score to the leaderboard',
+    gender: 'Gender', man: 'Man', woman: 'Woman',
+    profession: 'Profession', firstname: 'First Name *', lastname: 'Last Name *',
+    postal: 'Postal Code', phone: 'Phone Number', email: 'Email Address *',
+    submit: 'Submit & View Leaderboard',
+    error: 'Please fill in all required fields (*)',
+    boardTitle: '🏆 Leaderboard', boardSub: 'Top border defenders',
+    thName: 'Name', thScore: 'Score', thInt: 'Intercepted', thLevel: 'Level',
+    playAgain: '▶ Play Again', takeAction: 'Take Action! →',
+  },
+  DE: {
+    title: '🇨🇭 Grenze überwältigt',
+    sub: 'Gib deine Daten ein, um deinen Score zu speichern',
+    gender: 'Geschlecht', man: 'Mann', woman: 'Frau',
+    profession: 'Beruf', firstname: 'Vorname *', lastname: 'Nachname *',
+    postal: 'Postleitzahl', phone: 'Telefonnummer', email: 'E-Mail-Adresse *',
+    submit: 'Absenden & Rangliste anzeigen',
+    error: 'Bitte alle Pflichtfelder (*) ausfüllen',
+    boardTitle: '🏆 Rangliste', boardSub: 'Top Grenzschützer',
+    thName: 'Name', thScore: 'Score', thInt: 'Abgefangen', thLevel: 'Level',
+    playAgain: '▶ Neu spielen', takeAction: 'Jetzt handeln! →',
+  },
+  FR: {
+    title: '🇨🇭 Frontière submergée',
+    sub: 'Entrez vos données pour sauvegarder votre score',
+    gender: 'Genre', man: 'Homme', woman: 'Femme',
+    profession: 'Profession', firstname: 'Prénom *', lastname: 'Nom *',
+    postal: 'Code postal', phone: 'Téléphone', email: 'Adresse e-mail *',
+    submit: 'Envoyer & voir le classement',
+    error: 'Veuillez remplir tous les champs obligatoires (*)',
+    boardTitle: '🏆 Classement', boardSub: 'Meilleurs défenseurs',
+    thName: 'Nom', thScore: 'Score', thInt: 'Interceptés', thLevel: 'Niveau',
+    playAgain: '▶ Rejouer', takeAction: 'Agir maintenant! →',
+  },
+  IT: {
+    title: '🇨🇭 Frontiera sopraffatta',
+    sub: 'Inserisci i tuoi dati per salvare il tuo punteggio',
+    gender: 'Genere', man: 'Uomo', woman: 'Donna',
+    profession: 'Professione', firstname: 'Nome *', lastname: 'Cognome *',
+    postal: 'Codice postale', phone: 'Numero di telefono', email: 'Indirizzo e-mail *',
+    submit: 'Invia e vedi la classifica',
+    error: 'Compilare tutti i campi obbligatori (*)',
+    boardTitle: '🏆 Classifica', boardSub: 'Migliori difensori',
+    thName: 'Nome', thScore: 'Punti', thInt: 'Intercettati', thLevel: 'Livello',
+    playAgain: '▶ Rigioca', takeAction: 'Agisci ora! →',
+  },
+};
+
+function showEndOverlay() {
+  const fi = FORM_I18N[lang] || FORM_I18N.EN;
+  // Translate form labels
+  document.getElementById('formTitle').textContent   = fi.title;
+  document.getElementById('formSubtitle').textContent = fi.sub;
+  document.getElementById('lbl-gender').textContent    = fi.gender;
+  document.getElementById('opt-man').textContent       = fi.man;
+  document.getElementById('opt-woman').textContent     = fi.woman;
+  document.getElementById('lbl-profession').textContent = fi.profession;
+  document.getElementById('lbl-firstname').textContent  = fi.firstname;
+  document.getElementById('lbl-lastname').textContent   = fi.lastname;
+  document.getElementById('lbl-postal').textContent     = fi.postal;
+  document.getElementById('lbl-phone').textContent      = fi.phone;
+  document.getElementById('lbl-email').textContent      = fi.email;
+  document.getElementById('formSubmitBtn').textContent  = fi.submit;
+  document.getElementById('formError').textContent      = fi.error;
+  document.getElementById('formPanel').style.display    = 'flex';
+  document.getElementById('formPanel').style.flexDirection = 'column';
+  document.getElementById('scorePanel').style.display   = 'none';
+  document.getElementById('endOverlay').classList.add('show');
+}
+
+function getScores() {
+  try { return JSON.parse(localStorage.getItem('sbScores') || '[]'); } catch(e) { return []; }
+}
+function saveScores(arr) {
+  localStorage.setItem('sbScores', JSON.stringify(arr.slice(0, 100)));
+}
+
+document.getElementById('formSubmitBtn').addEventListener('click', () => {
+  const fn = document.getElementById('f-firstname').value.trim();
+  const ln = document.getElementById('f-lastname').value.trim();
+  const em = document.getElementById('f-email').value.trim();
+  const err = document.getElementById('formError');
+  if (!fn || !ln || !em) { err.style.display = 'block'; return; }
+  err.style.display = 'none';
+
+  // Build display name: First name + Last initial
+  const displayName = fn + ' ' + ln.charAt(0).toUpperCase() + '.';
+
+  // Save to localStorage scoreboard
+  const entry = {
+    name:        displayName,
+    score:       state.score,
+    intercepted: state.intercepted,
+    level:       getLevel(state.wave),
+    ts:          Date.now(),
+    // Store full data for lead gen (not shown on board)
+    gender:      document.getElementById('f-gender').value,
+    profession:  document.getElementById('f-profession').value.trim(),
+    postal:      document.getElementById('f-postal').value.trim(),
+    phone:       document.getElementById('f-phone').value.trim(),
+    email:       em,
+    firstname:   fn,
+    lastname:    ln,
+  };
+  const scores = getScores();
+  scores.push(entry);
+  scores.sort((a, b) => b.score - a.score);
+  saveScores(scores);
+
+  showScoreboard(scores, entry);
+});
+
+function showScoreboard(scores, myEntry) {
+  const fi = FORM_I18N[lang] || FORM_I18N.EN;
+  const cta = CTA_TEXT[lang] || CTA_TEXT.EN;
+  document.getElementById('formPanel').style.display  = 'none';
+  document.getElementById('scorePanel').style.display = 'flex';
+  document.getElementById('scorePanelTitle').textContent = fi.boardTitle;
+  document.getElementById('scorePanelSub').textContent   = fi.boardSub;
+  document.getElementById('th-name').textContent         = fi.thName;
+  document.getElementById('th-score').textContent        = fi.thScore;
+  document.getElementById('th-intercepted').textContent  = fi.thInt;
+  document.getElementById('th-level').textContent        = fi.thLevel;
+  document.getElementById('spPlayAgain').textContent     = fi.playAgain;
+  document.getElementById('spTakeAction').textContent    = fi.takeAction;
+  document.getElementById('spShare').textContent          = fi.shareBtn || '🔗 Share with Friends';
+  // Populate my stats bar
+  if (state) {
+    const sb = document.getElementById('myStatsBar');
+    sb.style.display = 'flex';
+    document.getElementById('myStat1').innerHTML = `<span class="my-stat-val">${state.score.toLocaleString()}</span><span class="my-stat-label">Score</span>`;
+    document.getElementById('myStat2').innerHTML = `<span class="my-stat-val">${state.intercepted}</span><span class="my-stat-label">Intercepted</span>`;
+    document.getElementById('myStat3').innerHTML = `<span class="my-stat-val">${state.skilledCrossed || 0}</span><span class="my-stat-label">Skilled Workers</span>`;
+    document.getElementById('myStat4').innerHTML = `<span class="my-stat-val">${getLevel(state.wave)}</span><span class="my-stat-label">Level</span>`;
+  }
+  // Populate left panel logo + CTA
+  const logoKey = lang !== 'EN' ? 'Logo_' + lang : 'Logo';
+  const logoEl = document.getElementById('scoreLogoImg');
+  // Use ASSETS_B64 directly — guaranteed to be the data URI
+  if (ASSETS_B64[logoKey]) {
+    logoEl.src = ASSETS_B64[logoKey];
+    logoEl.style.display = 'block';
+  } else if (IMG[logoKey] && IMG[logoKey].src) {
+    logoEl.src = IMG[logoKey].src;
+    logoEl.style.display = 'block';
+  }
+  document.getElementById('scoreCTATitle').textContent = cta.title;
+  document.getElementById('scoreCTABody').textContent  = cta.body;
+
+  const medals = ['🥇','🥈','🥉'];
+  const top20  = scores.slice(0, 20);
+  const tbody  = document.getElementById('scoreTableBody');
+  tbody.innerHTML = top20.map((e, i) => {
+    const isMe = myEntry && e.ts === myEntry.ts;
+    const medal = i < 3 ? medals[i] : '';
+    return `<tr class="${isMe ? 'highlight' : ''}">
+      <td class="medal">${medal}</td>
+      <td class="rank">${i + 1}</td>
+      <td>${e.name}</td>
+      <td>${e.score.toLocaleString()}</td>
+      <td>${e.intercepted}</td>
+      <td>${e.level}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('spPlayAgain').addEventListener('click', () => {
+  document.getElementById('endOverlay').classList.remove('show');
+  startGame();
+});
+document.getElementById('spTakeAction').addEventListener('click', () => {
+  window.open('https://nachhaltigkeitsinitiative.ch/', '_blank');
+});
+document.getElementById('spShare').addEventListener('click', () => {
+  const url = 'https://keepitswiss.netlify.app';
+  const text = 'I scored ' + (state ? state.score : 0) + ' points defending Switzerland! Can you beat me? 🇨🇭';
+  if (navigator.share) {
+    navigator.share({ title: 'Protect Switzerland', text, url }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('spShare');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Link Copied!';
+      setTimeout(() => btn.textContent = orig, 2000);
+    }).catch(() => window.open(url, '_blank'));
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+ctx.fillStyle = '#0a0a12'; ctx.fillRect(0,0,W,H);
+ctx.fillStyle = '#fff'; ctx.font = '16px "Courier New",monospace';
+ctx.textAlign = 'center'; ctx.fillText('Loading...', W/2, H/2);
+
+
+// ── Combo system ──────────────────────────────────────────────────────────
+function getComboMult() {
+  const c = state.combo;
+  if (c >= 20) return 3.0;
+  if (c >= 15) return 2.5;
+  if (c >= 10) return 2.0;
+  if (c >= 5)  return 1.5;
+  return 1.0;
+}
+function addCombo() {
+  state.combo++;
+  const mult = getComboMult();
+  const el = document.getElementById('comboDisplay');
+  const val = document.getElementById('comboVal');
+  if (el && val) {
+    val.textContent = mult.toFixed(1);
+    el.classList.add('active');
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  }
+}
+function breakCombo(reason) {
+  if (state.combo > 0) {
+    spawnFloat(W/2, H/2 - 60, '💔 COMBO BREAK!', '#ef4444', 18);
+  }
+  state.combo = 0;
+  state.perfectWave = false;
+  const el = document.getElementById('comboDisplay');
+  if (el) el.classList.remove('active');
+}
+function updateComboHUD() {
+  const mult = getComboMult();
+  const el  = document.getElementById('comboDisplay');
+  const val = document.getElementById('comboVal');
+  if (el && val) {
+    val.textContent = mult.toFixed(1);
+    if (state.combo >= 5) el.classList.add('active');
+    else el.classList.remove('active');
+  }
+}
+
+loadAssets(() => {
+  openPanel = null;
+  drawTitleScreen();
+});
+
+// Init mobile controls after page is ready
+initMobileControls();
+</script>
+</body>
+</html>
