@@ -968,8 +968,8 @@ const I18N = {
   "DE": {
     "htp_title": "SPIELANLEITUNG",
     "htp_lines": [
-      "Stoppe illegale Grenzübertritte",
-      "und schütze die Bevölkerung.",
+      "Schweiz schützen",
+      "statt schleichender Islamisierung!",
       "",
       "Bewege dich mit den Pfeiltasten",
       "oder W A S D.",
@@ -980,9 +980,9 @@ const I18N = {
       "Masseneinwanderung."
     ],
     "htp_cta": "START",
-    "ati_title": "ÜBER DIE INITIATIVE",
+    "ati_title": "Keine 10 Millionen Schweiz",
     "ati_lines": [
-      "Die Schweiz ist am Limit: Jährlich kommen über 100’000 Personen zusätzlich ins Land. Viele Schweizer fühlen sich fremd und unsicher im eigenen Land. Die massive Zuwanderung aus fremden Kulturen gefährdet unsere Sicherheit, unsere Freiheit und unsere Identität. Frauenverachtung, Parallelgesellschaften und steigende Kriminalität bedrohen unseren Schweizer Lebensstil. Wir müssen jetzt handeln, damit die Schweiz Schweiz bleibt und nicht zur Kolonie wird. Schützen wir unsere Kultur vor dem politischen Islam."
+      "Wir alle sehen und spüren die Folgen der massiven Zuwanderung: Aktuell kommen pro Jahr über 100 000 Personen zusätzlich in die Schweiz. Viele aus fremden, islamischen Kulturen. Viele wandern in unseren Sozialstaat ein. Meldungen über Einbrüche, Gewaltverbrechen, Belästigungen und Messerangriffe sind alltäglich geworden. Viele Schweizerinnen und Schweizer fühlen sich fremd und unsicher im eigenen Land. Jedes Jahr kommen zehntausende Asyl-Migranten mit kriminellen Schleusern in die Schweiz. Die Mehrheit sind junge muslimische Männer. Sie kommen aus Nordafrika, Syrien, Afghanistan und der Türkei. Die Zahl der Muslime in der Schweiz hat sich verdreifacht: auf fast eine halbe Million. Auch der politische Islam breitet sich schleichend aus: Viele Muslime bringen problematische Vorstellungen über Frauen und Gewalt mit. Es handelt sich um eine gesellschaftliche Zeitbombe. Islamisten lehnen unsere Kultur, unsere Freiheiten und unseren Lebensstil ab. Sie wollen bei uns den politischen Islam verbreiten – finanziert mit viel Geld aus dem Ausland. Personen aus radikal-muslimischen Kulturen sind überdurchschnittlich kriminell und gewalttätig. Das zeigt sich auch in der häuslichen Gewalt gegenüber Frauen. Im politischen Islam sind Frauen Menschen zweiter Klasse. Laut der Ideologie des politischen Islam müssen sich Frauen unterordnen: Das Kopftuch ist das offizielle Zeichen dieser Unterordnung. Moderne Frauen werden als «Huren» bezeichnet und belästigt oder bedroht. Wollen wir Verhältnisse wie in Frankreich, Deutschland oder England? Mit Clan-Kriminalität, Frauenverachtung und Parallel-Gesellschaften? Schon heute bewegen sich viele Frauen nicht mehr frei und sicher in der Schweiz. Darum Ja zu einer gesteuerten Zuwanderung. Damit die Schweiz Schweiz bleibt und nicht zu einer islamischen Kolonie wird."
     ],
     "ati_cta": "Ja zum Schutz der Schweiz und unserer Kultur"
   },
@@ -1256,7 +1256,7 @@ function drawTitleScreen() {
   }
 
   if (openPanel === 'ati') {
-    drawRedPanel(panelX, panelY, PW, PH, t('ati_title'), t('ati_lines'), t('ati_cta'), 12);
+    drawRedPanel(panelX, panelY, PW, PH, t('ati_title'), t('ati_lines'), t('ati_cta'), 12); // body at 12px
     clickZones.unshift({ x: panelX, y: panelY, w: PW, h: PH,
       action: () => { openPanel = null; drawTitleScreen(); }
     });
@@ -3342,7 +3342,7 @@ const FORM_I18N = {
     "playAgain": "▶ Neu spielen",
     "takeAction": "Ja zum Schutz der Schweiz und unserer Kultur",
     "shareBtn": "🔗 Mit Freunden teilen",
-    "initiativeMsg": "Die Schweiz ist am Limit: Jährlich kommen über 100’000 Personen zusätzlich ins Land. Viele Schweizer fühlen sich fremd und unsicher im eigenen Land. Die massive Zuwanderung aus fremden Kulturen gefährdet unsere Sicherheit, unsere Freiheit und unsere Identität. Frauenverachtung, Parallelgesellschaften und steigende Kriminalität bedrohen unseren Schweizer Lebensstil. Wir müssen jetzt handeln, damit die Schweiz Schweiz bleibt und nicht zur Kolonie wird. Schützen wir unsere Kultur vor dem politischen Islam."
+    "initiativeMsg": "Du siehst selbst: Mit der aktuellen Zuwanderung können wir unsere Schweizer Kultur und Freiheit nicht mehr schützen. Unterstütze darum jetzt unsere Abstimmungs-Kampagne und stimme am 14. Juni JA zur Nachhaltigkeits-Initiative. Mehr Infos: www.nachhaltigkeitsinitiative.ch"
   },
   "FR": {
     "title": "🇨🇭 Frontière franchie",
